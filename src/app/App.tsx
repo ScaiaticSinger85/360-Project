@@ -25,7 +25,7 @@ export type PageType =
   | 'navigation-flow';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<PageType>('navigation-flow');
+  const [currentPage, setCurrentPage] = useState<PageType>('home');
   const [userType, setUserType] = useState<UserType>('unregistered');
 
   return (
@@ -37,17 +37,13 @@ export default function App() {
         onUserTypeChange={setUserType}
       />
       
-      <main className="pt-20">
-        {currentPage === 'navigation-flow' ? (
-          <NavigationFlow onNavigate={setCurrentPage} />
-        ) : (
-          <WireframeViewer 
-            page={currentPage}
-            userType={userType}
-            onNavigate={setCurrentPage}
-          />
-        )}
-      </main>
+<main className="pt-20">
+  <WireframeViewer
+    page={currentPage}
+    userType={userType}
+    onNavigate={setCurrentPage}
+  />
+</main>
     </div>
   );
 }
