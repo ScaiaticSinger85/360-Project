@@ -21,6 +21,8 @@ export function WireframeNav({ currentPage, userType, onPageChange, onUserTypeCh
     { id: 'sign-up' as PageType, label: 'Sign Up' },
   ];
 
+  
+
   const userPages = [
     { id: 'create-event' as PageType, label: 'Create Event' },
     { id: 'my-events' as PageType, label: 'My Events' },
