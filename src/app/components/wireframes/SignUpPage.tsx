@@ -33,7 +33,7 @@ export function SignUpPage({ onNavigate }: SignUpPageProps) {
                 <User size={20} className="text-gray-400" />
                 <span className="text-gray-400 text-sm">Enter your full name</span>
               </div>
-            </div>z
+            </div>
 
             {/* Email Field */}
             <div className="mb-4">

@@ -1,6 +1,6 @@
 import { PageType, UserType } from '../../App';
 import { Search, Calendar, MapPin, Users, ChevronRight } from 'lucide-react';
-import { Header } from "../Header";
+
 interface HomePageProps {
   onNavigate: (page: PageType) => void;
   userType: UserType;

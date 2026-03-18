@@ -16,7 +16,7 @@ export function SignInPage({ onNavigate }: SignInPageProps) {
           </button>
         </div>
       </div>
-    
+
       {/* Sign In Form */}
       <div className="flex items-center justify-center p-6 min-h-[calc(100vh-80px)]">
         <div className="w-full max-w-md">
