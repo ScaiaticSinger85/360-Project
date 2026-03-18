@@ -1,0 +1,113 @@
+const express = require('express');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+const PORT = 5000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Path to JSON file
+const eventsFilePath = path.join(__dirname, 'events.json');
+
+// Helper function to read events from file
+const readEventsFromFile = () => {
+  try {
+    const data = fs.readFileSync(eventsFilePath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading events file:', error);
+    return [];
+  }
+};
+
+// Helper function to write events to file
+const writeEventsToFile = (events) => {
+  try {
+    fs.writeFileSync(eventsFilePath, JSON.stringify(events, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Error writing to events file:', error);
+    return false;
+  }
+};
+
+// GET route for search feature
+app.get('/api/events/search', (req, res) => {
+  const searchTerm = req.query.term?.toLowerCase() || '';
+  const events = readEventsFromFile();
+  
+  if (!searchTerm) {
+    return res.json(events);
+  }
+  
+  const filteredEvents = events.filter(event => {
+    return (
+      event.title.toLowerCase().includes(searchTerm) ||
+      event.description.toLowerCase().includes(searchTerm) ||
+      event.category.toLowerCase().includes(searchTerm) ||
+      event.location.toLowerCase().includes(searchTerm) ||
+      event.organizer.toLowerCase().includes(searchTerm)
+    );
+  });
+  
+  res.json({
+    results: filteredEvents,
+    count: filteredEvents.length,
+    searchTerm: req.query.term
+  });
+});
+
+// POST route for submission feature
+app.post('/api/events', (req, res) => {
+  const newEvent = req.body;
+  const events = readEventsFromFile();
+  
+  // Validate required fields
+  const requiredFields = ['title', 'date', 'time', 'location', 'category', 'description', 'organizer', 'price', 'capacity'];
+  const missingFields = requiredFields.filter(field => !newEvent[field]);
+  
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: `Missing required fields: ${missingFields.join(', ')}`
+    });
+  }
+  
+  // Generate new ID
+  const maxId = Math.max(...events.map(e => e.id), 0);
+  newEvent.id = maxId + 1;
+  
+  // Add timestamp
+  newEvent.createdAt = new Date().toISOString();
+  
+  // Add to events array
+  events.push(newEvent);
+  
+  // Save to file
+  if (writeEventsToFile(events)) {
+    res.status(201).json({
+      success: true,
+      message: 'Event created successfully!',
+      event: newEvent
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      message: 'Error saving event to database'
+    });
+  }
+});
+
+// GET all events (for testing)
+app.get('/api/events', (req, res) => {
+  const events = readEventsFromFile();
+  res.json(events);
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});

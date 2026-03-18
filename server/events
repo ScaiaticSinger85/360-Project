@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "title": "Summer Music Festival 2026",
+    "date": "June 15, 2026",
+    "time": "6:00 PM",
+    "location": "Waterfront Park",
+    "category": "Music",
+    "description": "Join us for the biggest music festival of the summer featuring local and international artists.",
+    "organizer": "Kelowna Events Co.",
+    "price": 45.00,
+    "capacity": 500
+  },
+  {
+    "id": 2,
+    "title": "Tech & Innovation Conference",
+    "date": "March 22, 2026",
+    "time": "9:00 AM",
+    "location": "Kelowna Convention Center",
+    "category": "Business",
+    "description": "Explore the latest in technology and network with industry leaders.",
+    "organizer": "TechHub Kelowna",
+    "price": 99.99,
+    "capacity": 300
+  },
+  {
+    "id": 3,
+    "title": "Community Art Exhibition",
+    "date": "February 28, 2026",
+    "time": "2:00 PM",
+    "location": "Downtown Gallery",
+    "category": "Arts",
+    "description": "Showcasing local artists and their amazing work.",
+    "organizer": "Kelowna Arts Council",
+    "price": 0.00,
+    "capacity": 150
+  }
+]
