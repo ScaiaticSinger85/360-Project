@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
-import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -24,7 +23,6 @@ const CATEGORIES = [
 
 export default function CreateEvent() {
   const { user } = useAuth();
-  const { createEvent } = useData();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -126,33 +124,48 @@ export default function CreateEvent() {
 
     setIsSubmitting(true);
 
+    const payload = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      category: formData.category,
+      date: formData.date,
+      time: formData.time,
+      location: formData.location.trim(),
+      address: formData.address.trim(),
+      capacity: parseInt(formData.capacity),
+      imageUrl: formData.imageUrl.trim(),
+      organizer: user.name,
+      organizerId: user.id,
+      isPublic: formData.isPublic,
+    };
+
     try {
-      const newEvent = createEvent({
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        category: formData.category,
-        date: formData.date,
-        time: formData.time,
-        location: formData.location.trim(),
-        address: formData.address.trim(),
-        capacity: parseInt(formData.capacity),
-        imageUrl: formData.imageUrl.trim(),
-        organizerId: user.id,
-        organizerName: user.name,
-        isPublic: formData.isPublic,
+      const response = await fetch('http://localhost:4000/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
 
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to create event');
+      }
+
       toast.success('Event created successfully!');
-      navigate(`/events/${newEvent.id}`);
+      navigate('/my-events');
     } catch (error) {
-      toast.error('Failed to create event');
+      const message =
+        error instanceof Error ? error.message : 'Failed to create event';
+      toast.error(message);
       setIsSubmitting(false);
     }
   };
 
   const handleChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: '' }));
     }
@@ -177,7 +190,6 @@ export default function CreateEvent() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Title */}
               <div className="space-y-2">
                 <Label htmlFor="title">Event Title *</Label>
                 <Input
@@ -186,12 +198,9 @@ export default function CreateEvent() {
                   value={formData.title}
                   onChange={(e) => handleChange('title', e.target.value)}
                 />
-                {errors.title && (
-                  <p className="text-sm text-red-600">{errors.title}</p>
-                )}
+                {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
               </div>
 
-              {/* Description */}
               <div className="space-y-2">
                 <Label htmlFor="description">Description *</Label>
                 <Textarea
@@ -206,7 +215,6 @@ export default function CreateEvent() {
                 )}
               </div>
 
-              {/* Category */}
               <div className="space-y-2">
                 <Label htmlFor="category">Category *</Label>
                 <Select value={formData.category} onValueChange={(value) => handleChange('category', value)}>
@@ -221,12 +229,9 @@ export default function CreateEvent() {
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.category && (
-                  <p className="text-sm text-red-600">{errors.category}</p>
-                )}
+                {errors.category && <p className="text-sm text-red-600">{errors.category}</p>}
               </div>
 
-              {/* Date and Time */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">Date *</Label>
@@ -236,9 +241,7 @@ export default function CreateEvent() {
                     value={formData.date}
                     onChange={(e) => handleChange('date', e.target.value)}
                   />
-                  {errors.date && (
-                    <p className="text-sm text-red-600">{errors.date}</p>
-                  )}
+                  {errors.date && <p className="text-sm text-red-600">{errors.date}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -249,13 +252,10 @@ export default function CreateEvent() {
                     value={formData.time}
                     onChange={(e) => handleChange('time', e.target.value)}
                   />
-                  {errors.time && (
-                    <p className="text-sm text-red-600">{errors.time}</p>
-                  )}
+                  {errors.time && <p className="text-sm text-red-600">{errors.time}</p>}
                 </div>
               </div>
 
-              {/* Location */}
               <div className="space-y-2">
                 <Label htmlFor="location">Venue Name *</Label>
                 <Input
@@ -269,7 +269,6 @@ export default function CreateEvent() {
                 )}
               </div>
 
-              {/* Address */}
               <div className="space-y-2">
                 <Label htmlFor="address">Address *</Label>
                 <Input
@@ -278,12 +277,9 @@ export default function CreateEvent() {
                   value={formData.address}
                   onChange={(e) => handleChange('address', e.target.value)}
                 />
-                {errors.address && (
-                  <p className="text-sm text-red-600">{errors.address}</p>
-                )}
+                {errors.address && <p className="text-sm text-red-600">{errors.address}</p>}
               </div>
 
-              {/* Capacity */}
               <div className="space-y-2">
                 <Label htmlFor="capacity">Capacity *</Label>
                 <Input
@@ -299,7 +295,6 @@ export default function CreateEvent() {
                 )}
               </div>
 
-              {/* Image URL */}
               <div className="space-y-2">
                 <Label htmlFor="imageUrl">Event Image URL *</Label>
                 <Input
@@ -317,7 +312,6 @@ export default function CreateEvent() {
                 </p>
               </div>
 
-              {/* Public/Private */}
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="space-y-0.5">
                   <Label htmlFor="isPublic">Public Event</Label>
@@ -332,7 +326,6 @@ export default function CreateEvent() {
                 />
               </div>
 
-              {/* Info Alert */}
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
@@ -340,7 +333,6 @@ export default function CreateEvent() {
                 </AlertDescription>
               </Alert>
 
-              {/* Submit Button */}
               <div className="flex gap-4">
                 <Button type="submit" className="flex-1" disabled={isSubmitting}>
                   {isSubmitting ? 'Creating...' : 'Create Event'}

@@ -6,8 +6,24 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-EXCEL_FILE = "events.xlsx"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+EXCEL_FILE = os.path.join(BASE_DIR, "events.xlsx")
 SHEET_NAME = "Events"
+
+REQUIRED_FIELDS = [
+    "title",
+    "description",
+    "category",
+    "date",
+    "time",
+    "location",
+    "address",
+    "capacity",
+    "imageUrl",
+    "organizer",
+    "organizerId",
+    "isPublic",
+]
 
 
 def initialize_excel():
@@ -17,34 +33,39 @@ def initialize_excel():
         sheet.title = SHEET_NAME
         sheet.append([
             "Title",
+            "Description",
+            "Category",
             "Date",
             "Time",
             "Location",
-            "Category",
-            "Description",
+            "Address",
+            "Capacity",
+            "Image URL",
             "Organizer",
-            "Price",
-            "Capacity"
+            "Organizer ID",
+            "Is Public",
         ])
         workbook.save(EXCEL_FILE)
 
 
 def save_event_to_excel(event_data):
     initialize_excel()
-
     workbook = load_workbook(EXCEL_FILE)
     sheet = workbook[SHEET_NAME]
 
     sheet.append([
-        event_data.get("title", ""),
-        event_data.get("date", ""),
-        event_data.get("time", ""),
-        event_data.get("location", ""),
-        event_data.get("category", ""),
-        event_data.get("description", ""),
-        event_data.get("organizer", ""),
-        event_data.get("price", 0),
-        event_data.get("capacity", 0)
+        event_data["title"],
+        event_data["description"],
+        event_data["category"],
+        event_data["date"],
+        event_data["time"],
+        event_data["location"],
+        event_data["address"],
+        event_data["capacity"],
+        event_data["imageUrl"],
+        event_data["organizer"],
+        event_data["organizerId"],
+        "Yes" if event_data["isPublic"] else "No",
     ])
 
     workbook.save(EXCEL_FILE)
@@ -54,20 +75,19 @@ def save_event_to_excel(event_data):
 def create_event():
     try:
         data = request.get_json()
+        print("Received data:", data)
 
-        required_fields = [
-            "title",
-            "date",
-            "time",
-            "location",
-            "category",
-            "description",
-            "organizer",
-            "price",
-            "capacity"
-        ]
+        if not data:
+            return jsonify({
+                "success": False,
+                "message": "No JSON data received."
+            }), 400
 
-        missing_fields = [field for field in required_fields if field not in data or data[field] == ""]
+        missing_fields = []
+        for field in REQUIRED_FIELDS:
+            value = data.get(field)
+            if value is None or value == "":
+                missing_fields.append(field)
 
         if missing_fields:
             return jsonify({
@@ -75,15 +95,31 @@ def create_event():
                 "message": f"Missing required fields: {', '.join(missing_fields)}"
             }), 400
 
-        save_event_to_excel(data)
+        cleaned_data = {
+            "title": str(data["title"]).strip(),
+            "description": str(data["description"]).strip(),
+            "category": str(data["category"]).strip(),
+            "date": str(data["date"]).strip(),
+            "time": str(data["time"]).strip(),
+            "location": str(data["location"]).strip(),
+            "address": str(data["address"]).strip(),
+            "capacity": int(data["capacity"]),
+            "imageUrl": str(data["imageUrl"]).strip(),
+            "organizer": str(data["organizer"]).strip(),
+            "organizerId": str(data["organizerId"]).strip(),
+            "isPublic": bool(data["isPublic"]),
+        }
+
+        save_event_to_excel(cleaned_data)
 
         return jsonify({
             "success": True,
             "message": "Event saved successfully.",
-            "event": data
+            "event": cleaned_data
         }), 201
 
     except Exception as e:
+        print("Server error:", str(e))
         return jsonify({
             "success": False,
             "message": f"Server error: {str(e)}"
@@ -92,4 +128,4 @@ def create_event():
 
 if __name__ == "__main__":
     initialize_excel()
-    app.run(host="0.0.0.0", port=4000, debug=True)
+    app.run(host="0.0.0.0", port=4000, debug=False)

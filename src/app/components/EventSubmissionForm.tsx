@@ -9,32 +9,32 @@ interface EventFormData {
   category: string;
   description: string;
   organizer: string;
-  price: number;
-  capacity: number;
+  price: number | '';
+  capacity: number | '';
 }
 
 interface ServerResponse {
   success: boolean;
   message: string;
-  event?: any;
+  event?: EventFormData;
 }
 
-export function EventSubmissionForm() {
-  const [formData, setFormData] = useState<EventFormData>({
-    title: '',
-    date: '',
-    time: '',
-    location: '',
-    category: 'Music',
-    description: '',
-    organizer: '',
-    price: 0,
-    capacity: 0
-  });
+const initialFormData: EventFormData = {
+  title: '',
+  date: '',
+  time: '',
+  location: '',
+  category: 'Music',
+  description: '',
+  organizer: '',
+  price: '',
+  capacity: ''
+};
 
+export function EventSubmissionForm() {
+  const [formData, setFormData] = useState<EventFormData>(initialFormData);
   const [serverResponse, setServerResponse] = useState<ServerResponse | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showResponse, setShowResponse] = useState(false);
 
   const categories = [
     'Music',
@@ -45,71 +45,75 @@ export function EventSubmissionForm() {
     'Food & Drink'
   ];
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'number' ? parseFloat(value) || 0 : value
+      [name]:
+        type === 'number'
+          ? value === ''
+            ? ''
+            : Number(value)
+          : value
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setShowResponse(false);
+    setServerResponse(null);
+
+    const payload = {
+      ...formData,
+      price: formData.price === '' ? 0 : Number(formData.price),
+      capacity: formData.capacity === '' ? 0 : Number(formData.capacity)
+    };
 
     try {
       const response = await fetch('http://localhost:4000/api/events', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
+      const data: ServerResponse = await response.json();
       setServerResponse(data);
-      setShowResponse(true);
 
-      if (data.success) {
-        setFormData({
-          title: '',
-          date: '',
-          time: '',
-          location: '',
-          category: 'Music',
-          description: '',
-          organizer: '',
-          price: 0,
-          capacity: 0
-        });
+      if (response.ok && data.success) {
+        setFormData(initialFormData);
       }
-    } catch (error) {
+    } catch {
       setServerResponse({
         success: false,
-        message: 'Error connecting to server. Please try again.'
+        message: 'Error connecting to server. Please make sure the backend is running.'
       });
-      setShowResponse(true);
     } finally {
       setIsSubmitting(false);
-      setTimeout(() => setShowResponse(false), 5000);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Create New Event</h2>
-      
-      {showResponse && serverResponse && (
-        <div className={`mb-6 p-4 rounded-lg ${
-          serverResponse.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-        }`}>
+
+      {serverResponse && (
+        <div
+          className={`mb-6 p-4 rounded-lg ${
+            serverResponse.success
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+          }`}
+        >
           <p className="font-semibold">{serverResponse.message}</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Form fields here - same as before */}
         <div className="grid md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Event Title *</label>
@@ -136,8 +140,10 @@ export function EventSubmissionForm() {
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </select>
           </div>
@@ -232,6 +238,7 @@ export function EventSubmissionForm() {
                 onChange={handleChange}
                 required
                 min="1"
+                step="1"
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="e.g., 100"
               />
