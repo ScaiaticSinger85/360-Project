@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -114,30 +114,6 @@ export default function SignIn() {
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
-
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Demo Accounts</span>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2 text-sm">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <p className="font-semibold text-blue-900 mb-1">Regular User</p>
-                  <p className="text-blue-700">Email: user@example.com</p>
-                  <p className="text-blue-700">Password: password123</p>
-                </div>
-                <div className="p-3 bg-purple-50 rounded-lg">
-                  <p className="font-semibold text-purple-900 mb-1">Admin User</p>
-                  <p className="text-purple-700">Email: admin@kelowna.ca</p>
-                  <p className="text-purple-700">Password: admin123</p>
-                </div>
-              </div>
-            </div>
 
             <div className="mt-6 text-center text-sm">
               <span className="text-gray-600">Don't have an account? </span>
