@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, Link } from 'react-router';
+import { Link } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -10,17 +10,36 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { toast } from 'sonner';
 
 export default function UserProfile() {
-  const { user, updateProfile } = useAuth();
-  const navigate = useNavigate();
+  const { user, updateProfile, isLoading } = useAuth();
 
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    avatar: user?.avatar || '',
-    bio: user?.bio || '',
+    name: '',
+    email: '',
+    avatar: '',
+    bio: '',
   });
 
   const [isEditing, setIsEditing] = useState(false);
+
+  // Sync formData when user loads from localStorage
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar || '',
+        bio: user.bio || '',
+      });
+    }
+  }, [user]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

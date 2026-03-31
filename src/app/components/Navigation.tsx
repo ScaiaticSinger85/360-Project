@@ -1,23 +1,16 @@
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
-import { 
-  Calendar, 
-  LayoutDashboard, 
-  LogOut, 
-  User, 
+import {
+  Calendar,
+  LayoutDashboard,
+  LogOut,
+  User,
   CalendarPlus,
   Heart,
   Settings,
   Users
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu';
 
 export function Navigation() {
   const { user, logout } = useAuth();
@@ -96,7 +89,7 @@ export function Navigation() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
             {!user ? (
               <>
                 <Link to="/sign-in">
@@ -107,61 +100,34 @@ export function Navigation() {
                 </Link>
               </>
             ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <>
+                <Link to="/profile">
                   <Button variant="ghost" className="gap-2">
                     <User className="h-4 w-4" />
                     <span className="hidden sm:inline">{user.name}</span>
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium">{user.name}</p>
-                    <p className="text-xs text-gray-500">{user.email}</p>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="cursor-pointer">
-                      <User className="mr-2 h-4 w-4" />
-                      Profile
+                </Link>
+                {user.role === 'admin' && (
+                  <>
+                    <Link to="/admin">
+                      <Button variant="ghost" className="gap-2">
+                        <Settings className="h-4 w-4" />
+                        <span className="hidden sm:inline">Admin</span>
+                      </Button>
                     </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/my-events" className="cursor-pointer">
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      My Events
+                    <Link to="/admin/users">
+                      <Button variant="ghost" className="gap-2">
+                        <Users className="h-4 w-4" />
+                        <span className="hidden sm:inline">Users</span>
+                      </Button>
                     </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/my-rsvps" className="cursor-pointer">
-                      <Heart className="mr-2 h-4 w-4" />
-                      My RSVPs
-                    </Link>
-                  </DropdownMenuItem>
-                  {user.role === 'admin' && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link to="/admin" className="cursor-pointer">
-                          <Settings className="mr-2 h-4 w-4" />
-                          Admin Dashboard
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/admin/users" className="cursor-pointer">
-                          <Users className="mr-2 h-4 w-4" />
-                          User Management
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  </>
+                )}
+                <Button variant="ghost" className="gap-2 text-red-600 hover:text-red-700" onClick={logout}>
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Sign Out</span>
+                </Button>
+              </>
             )}
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
@@ -33,9 +33,9 @@ export default function EventBrowse() {
     performSearch();
   }, [selectedCategory]);
 
-  const performSearch = () => {
+  const performSearch = async () => {
     const category = selectedCategory === 'All Categories' ? undefined : selectedCategory;
-    const results = searchEvents(searchQuery, category);
+    const results = await searchEvents(searchQuery, category);
     setFilteredEvents(results);
 
     // Update URL params
@@ -50,11 +50,12 @@ export default function EventBrowse() {
     performSearch();
   };
 
-  const handleClearSearch = () => {
+  const handleClearSearch = async () => {
     setSearchQuery('');
     setSelectedCategory('All Categories');
     setSearchParams({});
-    setFilteredEvents(searchEvents('', undefined));
+    const results = await searchEvents('', undefined);
+    setFilteredEvents(results);
   };
 
   return (

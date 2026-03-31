@@ -1,20 +1,21 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Event, RSVP, Review } from '../types';
-import { SAMPLE_EVENTS } from '../data/sampleEvents';
+
+const API_BASE_URL = 'http://localhost:4000';
 
 interface DataContextType {
   events: Event[];
   rsvps: RSVP[];
   reviews: Review[];
-  createEvent: (event: Omit<Event, 'id' | 'createdAt' | 'attendees'>) => Event;
-  updateEvent: (id: string, updates: Partial<Event>) => void;
-  deleteEvent: (id: string) => void;
+  createEvent: (event: Omit<Event, 'id' | 'createdAt' | 'attendees'>) => Promise<Event>;
+  updateEvent: (id: string, updates: Partial<Event>) => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
   createRSVP: (eventId: string, userId: string, status: RSVP['status']) => void;
   updateRSVP: (eventId: string, userId: string, status: RSVP['status']) => void;
   getRSVP: (eventId: string, userId: string) => RSVP | undefined;
   createReview: (review: Omit<Review, 'id' | 'createdAt'>) => void;
   getEventReviews: (eventId: string) => Review[];
-  searchEvents: (query: string, category?: string) => Event[];
+  searchEvents: (query: string, category?: string) => Promise<Event[]>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -24,63 +25,49 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [rsvps, setRsvps] = useState<RSVP[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
 
-  // Initialize data from localStorage or use sample data
+  // Fetch all events from the server on mount
   useEffect(() => {
-    const storedEvents = localStorage.getItem('events');
+    fetch(`${API_BASE_URL}/api/events`)
+      .then(res => res.json())
+      .then((data: Event[]) => setEvents(data))
+      .catch(() => console.error('Failed to fetch events'));
+
     const storedRsvps = localStorage.getItem('rsvps');
     const storedReviews = localStorage.getItem('reviews');
-
-    if (storedEvents) {
-      setEvents(JSON.parse(storedEvents));
-    } else {
-      // Initialize with sample data
-      setEvents(SAMPLE_EVENTS);
-      localStorage.setItem('events', JSON.stringify(SAMPLE_EVENTS));
-    }
-
-    if (storedRsvps) {
-      setRsvps(JSON.parse(storedRsvps));
-    }
-
-    if (storedReviews) {
-      setReviews(JSON.parse(storedReviews));
-    }
+    if (storedRsvps) setRsvps(JSON.parse(storedRsvps));
+    if (storedReviews) setReviews(JSON.parse(storedReviews));
   }, []);
 
-  const createEvent = (eventData: Omit<Event, 'id' | 'createdAt' | 'attendees'>): Event => {
-    const newEvent: Event = {
-      ...eventData,
-      id: `event_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      attendees: 0,
-    };
-
-    const updatedEvents = [...events, newEvent];
-    setEvents(updatedEvents);
-    localStorage.setItem('events', JSON.stringify(updatedEvents));
-
+  const createEvent = async (eventData: Omit<Event, 'id' | 'createdAt' | 'attendees'>): Promise<Event> => {
+    const res = await fetch(`${API_BASE_URL}/api/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(eventData),
+    });
+    const newEvent: Event = await res.json();
+    setEvents(prev => [...prev, newEvent]);
     return newEvent;
   };
 
-  const updateEvent = (id: string, updates: Partial<Event>) => {
-    const updatedEvents = events.map(event =>
-      event.id === id ? { ...event, ...updates } : event
-    );
-    setEvents(updatedEvents);
-    localStorage.setItem('events', JSON.stringify(updatedEvents));
+  const updateEvent = async (id: string, updates: Partial<Event>): Promise<void> => {
+    const res = await fetch(`${API_BASE_URL}/api/events/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    const updated: Event = await res.json();
+    setEvents(prev => prev.map(e => (e.id === id ? updated : e)));
   };
 
-  const deleteEvent = (id: string) => {
-    const updatedEvents = events.filter(event => event.id !== id);
-    setEvents(updatedEvents);
-    localStorage.setItem('events', JSON.stringify(updatedEvents));
+  const deleteEvent = async (id: string): Promise<void> => {
+    await fetch(`${API_BASE_URL}/api/events/${id}`, { method: 'DELETE' });
+    setEvents(prev => prev.filter(e => e.id !== id));
 
-    // Also delete associated RSVPs and reviews
-    const updatedRsvps = rsvps.filter(rsvp => rsvp.eventId !== id);
+    const updatedRsvps = rsvps.filter(r => r.eventId !== id);
     setRsvps(updatedRsvps);
     localStorage.setItem('rsvps', JSON.stringify(updatedRsvps));
 
-    const updatedReviews = reviews.filter(review => review.eventId !== id);
+    const updatedReviews = reviews.filter(r => r.eventId !== id);
     setReviews(updatedReviews);
     localStorage.setItem('reviews', JSON.stringify(updatedReviews));
   };
@@ -93,52 +80,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
       status,
       createdAt: new Date().toISOString(),
     };
+    const updated = [...rsvps, newRsvp];
+    setRsvps(updated);
+    localStorage.setItem('rsvps', JSON.stringify(updated));
 
-    const updatedRsvps = [...rsvps, newRsvp];
-    setRsvps(updatedRsvps);
-    localStorage.setItem('rsvps', JSON.stringify(updatedRsvps));
-
-    // Update event attendee count
     if (status === 'attending') {
       const event = events.find(e => e.id === eventId);
-      if (event) {
-        updateEvent(eventId, { attendees: event.attendees + 1 });
-      }
+      if (event) updateEvent(eventId, { attendees: event.attendees + 1 });
     }
   };
 
   const updateRSVP = (eventId: string, userId: string, status: RSVP['status']) => {
-    const existingRsvp = rsvps.find(r => r.eventId === eventId && r.userId === userId);
-    
-    if (existingRsvp) {
-      const oldStatus = existingRsvp.status;
-      const updatedRsvps = rsvps.map(rsvp =>
-        rsvp.eventId === eventId && rsvp.userId === userId
-          ? { ...rsvp, status }
-          : rsvp
+    const existing = rsvps.find(r => r.eventId === eventId && r.userId === userId);
+    if (existing) {
+      const oldStatus = existing.status;
+      const updated = rsvps.map(r =>
+        r.eventId === eventId && r.userId === userId ? { ...r, status } : r
       );
-      setRsvps(updatedRsvps);
-      localStorage.setItem('rsvps', JSON.stringify(updatedRsvps));
+      setRsvps(updated);
+      localStorage.setItem('rsvps', JSON.stringify(updated));
 
-      // Update attendee count
       const event = events.find(e => e.id === eventId);
       if (event) {
-        let attendeeChange = 0;
-        if (oldStatus !== 'attending' && status === 'attending') attendeeChange = 1;
-        if (oldStatus === 'attending' && status !== 'attending') attendeeChange = -1;
-        
-        if (attendeeChange !== 0) {
-          updateEvent(eventId, { attendees: event.attendees + attendeeChange });
-        }
+        let delta = 0;
+        if (oldStatus !== 'attending' && status === 'attending') delta = 1;
+        if (oldStatus === 'attending' && status !== 'attending') delta = -1;
+        if (delta !== 0) updateEvent(eventId, { attendees: event.attendees + delta });
       }
     } else {
       createRSVP(eventId, userId, status);
     }
   };
 
-  const getRSVP = (eventId: string, userId: string): RSVP | undefined => {
-    return rsvps.find(r => r.eventId === eventId && r.userId === userId);
-  };
+  const getRSVP = (eventId: string, userId: string): RSVP | undefined =>
+    rsvps.find(r => r.eventId === eventId && r.userId === userId);
 
   const createReview = (reviewData: Omit<Review, 'id' | 'createdAt'>) => {
     const newReview: Review = {
@@ -146,38 +121,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       id: `review_${Date.now()}`,
       createdAt: new Date().toISOString(),
     };
-
-    const updatedReviews = [...reviews, newReview];
-    setReviews(updatedReviews);
-    localStorage.setItem('reviews', JSON.stringify(updatedReviews));
+    const updated = [...reviews, newReview];
+    setReviews(updated);
+    localStorage.setItem('reviews', JSON.stringify(updated));
   };
 
-  const getEventReviews = (eventId: string): Review[] => {
-    return reviews.filter(r => r.eventId === eventId);
-  };
+  const getEventReviews = (eventId: string): Review[] =>
+    reviews.filter(r => r.eventId === eventId);
 
-  const searchEvents = (query: string, category?: string): Event[] => {
-    let filtered = events;
+  const searchEvents = async (query: string, category?: string): Promise<Event[]> => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set('q', query);
+    if (category && category !== 'all') params.set('category', category);
 
-    // Filter by category
-    if (category && category !== 'all') {
-      filtered = filtered.filter(event => 
-        event.category.toLowerCase() === category.toLowerCase()
-      );
-    }
-
-    // Filter by search query (case-insensitive, partial match)
-    if (query.trim()) {
-      const lowerQuery = query.toLowerCase();
-      filtered = filtered.filter(event =>
-        event.title.toLowerCase().includes(lowerQuery) ||
-        event.description.toLowerCase().includes(lowerQuery) ||
-        event.location.toLowerCase().includes(lowerQuery) ||
-        event.category.toLowerCase().includes(lowerQuery)
-      );
-    }
-
-    return filtered;
+    const res = await fetch(`${API_BASE_URL}/api/events/search?${params.toString()}`);
+    return res.json();
   };
 
   return (
