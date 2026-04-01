@@ -5,12 +5,23 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
-import { Calendar, MapPin, Users, Edit } from 'lucide-react';
+import { Calendar, MapPin, Users, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 export default function MyEvents() {
   const { user } = useAuth();
-  const { events } = useData();
+  const { events, deleteEvent } = useData();
+
+  const handleDelete = async (id: string, title: string) => {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    try {
+      await deleteEvent(id);
+      toast.success('Event deleted');
+    } catch {
+      toast.error('Failed to delete event');
+    }
+  };
 
   if (!user) {
     return (
@@ -76,6 +87,13 @@ export default function MyEvents() {
               Edit
             </Button>
           </Link>
+          <Button
+            variant="outline"
+            className="gap-2 text-red-600 hover:text-red-700"
+            onClick={() => handleDelete(event.id, event.title)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </CardContent>
     </Card>

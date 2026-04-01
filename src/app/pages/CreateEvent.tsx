@@ -148,9 +148,8 @@ export default function CreateEvent() {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
+      if (!response.ok) {
+        const data = await response.json();
         throw new Error(data.message || 'Failed to create event');
       }
 

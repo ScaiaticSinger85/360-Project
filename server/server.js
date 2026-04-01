@@ -5,7 +5,7 @@ const path = require('path');
 
 const app = express();
 const PORT = 4000;
-const USERS_FILE = path.join(__dirname, 'events', 'users.json');
+const USERS_FILE = path.join(__dirname, 'users.json');
 
 // --- In-memory events store (partner: replace with MongoDB) ---
 let events = [

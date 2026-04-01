@@ -149,7 +149,7 @@ export default function EditEvent() {
     setIsSubmitting(true);
 
     try {
-      updateEvent(event.id, {
+      await updateEvent(event.id, {
         title: formData.title.trim(),
         description: formData.description.trim(),
         category: formData.category,
