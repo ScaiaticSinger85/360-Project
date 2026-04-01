@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
-import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -22,13 +21,31 @@ const CATEGORIES = [
   'Community',
 ];
 
+const API_URL = 'http://localhost:4000';
+
+type EventType = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  date: string;
+  time: string;
+  location: string;
+  address: string;
+  capacity: number;
+  imageUrl: string;
+  organizer: string;
+  organizerId: string;
+  isPublic: boolean;
+};
+
 export default function EditEvent() {
   const { id } = useParams();
   const { user } = useAuth();
-  const { events, updateEvent } = useData();
   const navigate = useNavigate();
 
-  const event = events.find((e) => e.id === id);
+  const [event, setEvent] = useState<EventType | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -47,62 +64,54 @@ export default function EditEvent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (event) {
-      setFormData({
-        title: event.title,
-        description: event.description,
-        category: event.category,
-        date: event.date,
-        time: event.time,
-        location: event.location,
-        address: event.address,
-        capacity: event.capacity.toString(),
-        imageUrl: event.imageUrl,
-        isPublic: event.isPublic,
-      });
-    }
-  }, [event]);
+    const fetchEvent = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/events`);
+        const data = await response.json();
 
-  if (!event) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <p className="text-center mb-4">Event not found</p>
-            <Link to="/my-events">
-              <Button className="w-full">Back to My Events</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to load events');
+        }
 
-  const canEdit = user && (event.organizerId === user.id || user.role === 'admin');
+        const foundEvent = data.events.find((e: EventType) => e.id === id);
 
-  if (!canEdit) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <p className="text-center mb-4">You don't have permission to edit this event</p>
-            <Link to={`/events/${event.id}`}>
-              <Button className="w-full">Back to Event</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+        if (!foundEvent) {
+          setEvent(null);
+          setLoading(false);
+          return;
+        }
+
+        setEvent(foundEvent);
+        setFormData({
+          title: foundEvent.title,
+          description: foundEvent.description,
+          category: foundEvent.category,
+          date: foundEvent.date,
+          time: foundEvent.time,
+          location: foundEvent.location,
+          address: foundEvent.address,
+          capacity: foundEvent.capacity.toString(),
+          imageUrl: foundEvent.imageUrl,
+          isPublic: foundEvent.isPublic,
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to load event');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvent();
+  }, [id]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.title.trim() || formData.title.length < 5) {
+    if (!formData.title.trim() || formData.title.trim().length < 5) {
       newErrors.title = 'Title must be at least 5 characters';
     }
 
-    if (!formData.description.trim() || formData.description.length < 20) {
+    if (!formData.description.trim() || formData.description.trim().length < 20) {
       newErrors.description = 'Description must be at least 20 characters';
     }
 
@@ -138,6 +147,54 @@ export default function EditEvent() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleChange = (field: string, value: string | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p>Loading event...</p>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6">
+            <p className="text-center mb-4">Event not found</p>
+            <Link to="/my-events">
+              <Button className="w-full">Back to My Events</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const canEdit = user && (event.organizerId === user.id || user.role === 'admin');
+
+  if (!canEdit) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6">
+            <p className="text-center mb-4">You don't have permission to edit this event</p>
+            <Link to={`/events/${event.id}`}>
+              <Button className="w-full">Back to Event</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -149,7 +206,7 @@ export default function EditEvent() {
     setIsSubmitting(true);
 
     try {
-      await updateEvent(event.id, {
+      const payload = {
         title: formData.title.trim(),
         description: formData.description.trim(),
         category: formData.category,
@@ -160,20 +217,27 @@ export default function EditEvent() {
         capacity: parseInt(formData.capacity),
         imageUrl: formData.imageUrl.trim(),
         isPublic: formData.isPublic,
+      };
+
+      const response = await fetch(`${API_URL}/api/events/${event.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to update event');
+      }
 
       toast.success('Event updated successfully!');
       navigate(`/events/${event.id}`);
     } catch (error) {
-      toast.error('Failed to update event');
+      toast.error(error instanceof Error ? error.message : 'Failed to update event');
       setIsSubmitting(false);
-    }
-  };
-
-  const handleChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -194,6 +258,7 @@ export default function EditEvent() {
               Update your event details
             </CardDescription>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
@@ -214,18 +279,25 @@ export default function EditEvent() {
                   value={formData.description}
                   onChange={(e) => handleChange('description', e.target.value)}
                 />
-                {errors.description && <p className="text-sm text-red-600">{errors.description}</p>}
+                {errors.description && (
+                  <p className="text-sm text-red-600">{errors.description}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="category">Category *</Label>
-                <Select value={formData.category} onValueChange={(value) => handleChange('category', value)}>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => handleChange('category', value)}
+                >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -314,7 +386,7 @@ export default function EditEvent() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Changes will be visible immediately after saving.
+                  Changes will be saved to the database immediately after you click save.
                 </AlertDescription>
               </Alert>
 

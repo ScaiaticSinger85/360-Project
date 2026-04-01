@@ -21,6 +21,8 @@ const CATEGORIES = [
   'Community',
 ];
 
+const API_URL = 'http://localhost:4000';
+
 export default function CreateEvent() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -61,13 +63,13 @@ export default function CreateEvent() {
 
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
-    } else if (formData.title.length < 5) {
+    } else if (formData.title.trim().length < 5) {
       newErrors.title = 'Title must be at least 5 characters';
     }
 
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
-    } else if (formData.description.length < 20) {
+    } else if (formData.description.trim().length < 20) {
       newErrors.description = 'Description must be at least 20 characters';
     }
 
@@ -81,6 +83,7 @@ export default function CreateEvent() {
       const selectedDate = new Date(formData.date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+
       if (selectedDate < today) {
         newErrors.date = 'Event date must be in the future';
       }
@@ -114,6 +117,14 @@ export default function CreateEvent() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleChange = (field: string, value: string | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: '' }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -140,7 +151,7 @@ export default function CreateEvent() {
     };
 
     try {
-      const response = await fetch('http://localhost:4000/api/events', {
+      const response = await fetch(`${API_URL}/api/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,8 +159,9 @@ export default function CreateEvent() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const data = await response.json();
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
         throw new Error(data.message || 'Failed to create event');
       }
 
@@ -160,13 +172,6 @@ export default function CreateEvent() {
         error instanceof Error ? error.message : 'Failed to create event';
       toast.error(message);
       setIsSubmitting(false);
-    }
-  };
-
-  const handleChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -187,6 +192,7 @@ export default function CreateEvent() {
               Fill out the form below to create a new event in Kelowna
             </CardDescription>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
@@ -216,7 +222,10 @@ export default function CreateEvent() {
 
               <div className="space-y-2">
                 <Label htmlFor="category">Category *</Label>
-                <Select value={formData.category} onValueChange={(value) => handleChange('category', value)}>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => handleChange('category', value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
@@ -263,9 +272,7 @@ export default function CreateEvent() {
                   value={formData.location}
                   onChange={(e) => handleChange('location', e.target.value)}
                 />
-                {errors.location && (
-                  <p className="text-sm text-red-600">{errors.location}</p>
-                )}
+                {errors.location && <p className="text-sm text-red-600">{errors.location}</p>}
               </div>
 
               <div className="space-y-2">
@@ -289,9 +296,7 @@ export default function CreateEvent() {
                   value={formData.capacity}
                   onChange={(e) => handleChange('capacity', e.target.value)}
                 />
-                {errors.capacity && (
-                  <p className="text-sm text-red-600">{errors.capacity}</p>
-                )}
+                {errors.capacity && <p className="text-sm text-red-600">{errors.capacity}</p>}
               </div>
 
               <div className="space-y-2">
@@ -303,9 +308,7 @@ export default function CreateEvent() {
                   value={formData.imageUrl}
                   onChange={(e) => handleChange('imageUrl', e.target.value)}
                 />
-                {errors.imageUrl && (
-                  <p className="text-sm text-red-600">{errors.imageUrl}</p>
-                )}
+                {errors.imageUrl && <p className="text-sm text-red-600">{errors.imageUrl}</p>}
                 <p className="text-xs text-gray-500">
                   Tip: Use Unsplash.com for free event images
                 </p>

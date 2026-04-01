@@ -1,235 +1,440 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
+const bcrypt = require('bcryptjs');
+const { MongoClient, ObjectId } = require('mongodb');
 
 const app = express();
-const PORT = 4000;
-const USERS_FILE = path.join(__dirname, 'users.json');
-
-// --- In-memory events store (partner: replace with MongoDB) ---
-let events = [
-  {
-    id: 'event_1',
-    title: 'Kelowna Summer Music Festival',
-    description: 'Join us for an amazing outdoor music festival featuring local and international artists. Enjoy food trucks, craft beer, and stunning views of Okanagan Lake.',
-    category: 'Music',
-    date: '2026-07-15',
-    time: '18:00',
-    location: 'Waterfront Park',
-    address: '1600 Abbott St, Kelowna, BC V1Y 1A9',
-    capacity: 500,
-    imageUrl: 'https://images.unsplash.com/photo-1605286232233-e448650f5914?w=1080',
-    organizerId: 'user_admin',
-    organizerName: 'Kelowna Events Committee',
-    createdAt: '2026-02-01T10:00:00Z',
-    attendees: 245,
-    isPublic: true,
-  },
-  {
-    id: 'event_2',
-    title: 'Okanagan Wine & Food Pairing',
-    description: 'Experience the best of Okanagan Valley wines paired with locally sourced cuisine. Meet winemakers and taste exclusive vintages.',
-    category: 'Food & Drink',
-    date: '2026-06-20',
-    time: '17:30',
-    location: 'Mission Hill Winery',
-    address: '1730 Mission Hill Rd, West Kelowna, BC V4T 2E4',
-    capacity: 60,
-    imageUrl: 'https://images.unsplash.com/photo-1593971965381-f00dd2e66211?w=1080',
-    organizerId: 'user_2',
-    organizerName: 'Okanagan Wine Society',
-    createdAt: '2026-01-15T14:30:00Z',
-    attendees: 42,
-    isPublic: true,
-  },
-  {
-    id: 'event_3',
-    title: 'Sunrise Yoga by the Lake',
-    description: 'Start your day with peaceful yoga sessions overlooking beautiful Okanagan Lake. All levels welcome.',
-    category: 'Sports & Fitness',
-    date: '2026-06-28',
-    time: '06:30',
-    location: 'Rotary Beach Park',
-    address: '3600 Lakeshore Rd, Kelowna, BC V1W 3L4',
-    capacity: 30,
-    imageUrl: 'https://images.unsplash.com/photo-1595981767862-0ea01651c50f?w=1080',
-    organizerId: 'user_3',
-    organizerName: 'Sarah Mitchell',
-    createdAt: '2026-02-10T09:00:00Z',
-    attendees: 18,
-    isPublic: true,
-  },
-  {
-    id: 'event_4',
-    title: 'Kelowna Farmers Market Opening Day',
-    description: 'Celebrate the opening day of the 2026 farmers market season! Shop fresh local produce, handmade crafts, and artisan products.',
-    category: 'Community',
-    date: '2026-04-12',
-    time: '08:00',
-    location: 'Kelowna Farmers Market',
-    address: '1700 Springfield Rd, Kelowna, BC V1Y 5V5',
-    capacity: 1000,
-    imageUrl: 'https://images.unsplash.com/photo-1747503331142-27f458a1498c?w=1080',
-    organizerId: 'user_admin',
-    organizerName: 'Kelowna Events Committee',
-    createdAt: '2026-01-20T11:00:00Z',
-    attendees: 567,
-    isPublic: true,
-  },
-  {
-    id: 'event_5',
-    title: 'Tech Startup Networking Mixer',
-    description: 'Connect with entrepreneurs, developers, and innovators in the Okanagan tech scene. Complimentary drinks and appetizers provided.',
-    category: 'Technology',
-    date: '2026-05-08',
-    time: '18:00',
-    location: 'Innovation Centre',
-    address: '459 Bernard Ave, Kelowna, BC V1Y 6N7',
-    capacity: 80,
-    imageUrl: 'https://images.unsplash.com/photo-1623121608226-ca93dec4d94e?w=1080',
-    organizerId: 'user_4',
-    organizerName: 'Okanagan Tech Alliance',
-    createdAt: '2026-02-05T16:00:00Z',
-    attendees: 63,
-    isPublic: true,
-  },
-];
-
 app.use(cors());
 app.use(express.json());
 
-// Load users from file, or return empty array
-function loadUsers() {
+const PORT = process.env.PORT || 4000;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://OLAMIPOADE:mipotop12@cluster0.xca99lx.mongodb.net/?appName=Cluster0';
+
+const client = new MongoClient(MONGO_URI);
+
+let db;
+let usersCollection;
+let eventsCollection;
+
+async function connectToDatabase() {
+  await client.connect();
+  db = client.db('event_app');
+  usersCollection = db.collection('users');
+  eventsCollection = db.collection('events');
+  console.log('Connected to MongoDB');
+}
+
+app.post('/api/auth/signup', async (req, res) => {
   try {
-    if (fs.existsSync(USERS_FILE)) {
-      return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+    const data = req.body;
+
+    if (!data) {
+      return res.status(400).json({
+        success: false,
+        message: 'No data received.',
+      });
     }
-  } catch {
-    // ignore parse errors
+
+    const name = String(data.name || '').trim();
+    const email = String(data.email || '').trim().toLowerCase();
+    const password = String(data.password || '').trim();
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please fill in all fields.',
+      });
+    }
+
+    if (name.length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name must be at least 2 characters.',
+      });
+    }
+
+    if (!email.includes('@') || !email.includes('.')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid email address.',
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters.',
+      });
+    }
+
+    const existingUser = await usersCollection.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email already exists.',
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = {
+      name,
+      email,
+      password: hashedPassword,
+      role: 'user',
+    };
+
+    const result = await usersCollection.insertOne(user);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Account created successfully.',
+      user: {
+        id: result.insertedId.toString(),
+        name,
+        email,
+        role: 'user',
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: `Server error: ${error.message}`,
+    });
   }
-  return [];
-}
-
-// Save users to file
-function saveUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-}
-
-// POST /api/auth/signup
-app.post('/api/auth/signup', (req, res) => {
-  const { name, email, password } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json({ success: false, message: 'Name, email, and password are required.' });
-  }
-
-  const users = loadUsers();
-  const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-  if (existing) {
-    return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
-  }
-
-  const newUser = {
-    id: `user_${Date.now()}`,
-    name,
-    email,
-    password, // NOTE: storing plain text — hash before production use
-    role: 'user',
-    createdAt: new Date().toISOString(),
-  };
-
-  users.push(newUser);
-  saveUsers(users);
-
-  const { password: _pw, ...userWithoutPassword } = newUser;
-  return res.status(201).json({ success: true, user: userWithoutPassword });
 });
 
-// POST /api/auth/signin
-app.post('/api/auth/signin', (req, res) => {
-  const { email, password } = req.body;
+app.post('/api/auth/signin', async (req, res) => {
+  try {
+    const data = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: 'Email and password are required.' });
+    if (!data) {
+      return res.status(400).json({
+        success: false,
+        message: 'No data received.',
+      });
+    }
+
+    const email = String(data.email || '').trim().toLowerCase();
+    const password = String(data.password || '').trim();
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please fill in all fields.',
+      });
+    }
+
+    const user = await usersCollection.findOne({ email });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'No account found with that email.',
+      });
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.password);
+
+    if (!passwordMatches) {
+      return res.status(401).json({
+        success: false,
+        message: 'Incorrect password.',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Signed in successfully.',
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: `Server error: ${error.message}`,
+    });
   }
-
-  const users = loadUsers();
-  const user = users.find(
-    u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-  );
-
-  if (!user) {
-    return res.status(401).json({ success: false, message: 'Invalid email or password.' });
-  }
-
-  const { password: _pw, ...userWithoutPassword } = user;
-  return res.json({ success: true, user: userWithoutPassword });
 });
 
-// GET /api/events — all events
-app.get('/api/events', (_req, res) => {
-  res.json(events);
+app.post('/api/events', async (req, res) => {
+  try {
+    const data = req.body;
+
+    if (!data) {
+      return res.status(400).json({
+        success: false,
+        message: 'No JSON data received.',
+      });
+    }
+
+    const requiredFields = [
+      'title',
+      'description',
+      'category',
+      'date',
+      'time',
+      'location',
+      'address',
+      'capacity',
+      'imageUrl',
+      'organizer',
+      'organizerId',
+      'isPublic',
+    ];
+
+    const missingFields = [];
+
+    for (const field of requiredFields) {
+      const value = data[field];
+      if (value === undefined || value === null || value === '') {
+        missingFields.push(field);
+      }
+    }
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Missing required fields: ${missingFields.join(', ')}`,
+      });
+    }
+
+    const event = {
+      title: String(data.title).trim(),
+      description: String(data.description).trim(),
+      category: String(data.category).trim(),
+      date: String(data.date).trim(),
+      time: String(data.time).trim(),
+      location: String(data.location).trim(),
+      address: String(data.address).trim(),
+      capacity: parseInt(data.capacity, 10),
+      imageUrl: String(data.imageUrl).trim(),
+      organizer: String(data.organizer).trim(),
+      organizerId: String(data.organizerId).trim(),
+      isPublic: Boolean(data.isPublic),
+      attendees: 0,
+    };
+
+    const result = await eventsCollection.insertOne(event);
+
+    const savedEvent = {
+      id: result.insertedId.toString(),
+      title: event.title,
+      description: event.description,
+      category: event.category,
+      date: event.date,
+      time: event.time,
+      location: event.location,
+      address: event.address,
+      capacity: event.capacity,
+      imageUrl: event.imageUrl,
+      organizer: event.organizer,
+      organizerId: event.organizerId,
+      isPublic: event.isPublic,
+      attendees: event.attendees,
+    };
+
+    return res.status(201).json({
+      success: true,
+      message: 'Event created successfully.',
+      event: savedEvent,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: `Server error: ${error.message}`,
+    });
+  }
 });
 
-// GET /api/events/search?q=...&category=...
-app.get('/api/events/search', (req, res) => {
-  const { q = '', category = '' } = req.query;
-  let results = events;
+app.get('/api/events', async (_req, res) => {
+  try {
+    const events = await eventsCollection.find().toArray();
 
-  if (category && category !== 'all') {
-    results = results.filter(e => e.category.toLowerCase() === category.toLowerCase());
+    const formattedEvents = events.map((event) => ({
+      id: event._id.toString(),
+      title: event.title || '',
+      description: event.description || '',
+      category: event.category || '',
+      date: event.date || '',
+      time: event.time || '',
+      location: event.location || '',
+      address: event.address || '',
+      capacity: event.capacity || 0,
+      imageUrl: event.imageUrl || '',
+      organizer: event.organizer || '',
+      organizerId: event.organizerId || '',
+      isPublic: event.isPublic || false,
+      attendees: event.attendees || 0,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      events: formattedEvents,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: `Server error: ${error.message}`,
+    });
   }
+});
 
-  if (q.trim()) {
-    const lower = q.toLowerCase();
-    results = results.filter(e =>
-      e.title.toLowerCase().includes(lower) ||
-      e.description.toLowerCase().includes(lower) ||
-      e.location.toLowerCase().includes(lower) ||
-      e.category.toLowerCase().includes(lower)
+app.put('/api/events/:eventId', async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const data = req.body;
+
+    if (!data) {
+      return res.status(400).json({
+        success: false,
+        message: 'No JSON data received.',
+      });
+    }
+
+    const requiredFields = [
+      'title',
+      'description',
+      'category',
+      'date',
+      'time',
+      'location',
+      'address',
+      'capacity',
+      'imageUrl',
+      'isPublic',
+    ];
+
+    const missingFields = [];
+
+    for (const field of requiredFields) {
+      const value = data[field];
+      if (value === undefined || value === null || value === '') {
+        missingFields.push(field);
+      }
+    }
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Missing required fields: ${missingFields.join(', ')}`,
+      });
+    }
+
+    let existingEvent;
+    try {
+      existingEvent = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    } catch {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid event ID.',
+      });
+    }
+
+    if (!existingEvent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found.',
+      });
+    }
+
+    const updatedData = {
+      title: String(data.title).trim(),
+      description: String(data.description).trim(),
+      category: String(data.category).trim(),
+      date: String(data.date).trim(),
+      time: String(data.time).trim(),
+      location: String(data.location).trim(),
+      address: String(data.address).trim(),
+      capacity: parseInt(data.capacity, 10),
+      imageUrl: String(data.imageUrl).trim(),
+      isPublic: Boolean(data.isPublic),
+      attendees: parseInt(
+        data.attendees !== undefined ? data.attendees : existingEvent.attendees || 0,
+        10
+      ),
+    };
+
+    await eventsCollection.updateOne(
+      { _id: new ObjectId(eventId) },
+      { $set: updatedData }
     );
+
+    const updatedEvent = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Event updated successfully.',
+      event: {
+        id: updatedEvent._id.toString(),
+        title: updatedEvent.title || '',
+        description: updatedEvent.description || '',
+        category: updatedEvent.category || '',
+        date: updatedEvent.date || '',
+        time: updatedEvent.time || '',
+        location: updatedEvent.location || '',
+        address: updatedEvent.address || '',
+        capacity: updatedEvent.capacity || 0,
+        imageUrl: updatedEvent.imageUrl || '',
+        organizer: updatedEvent.organizer || '',
+        organizerId: updatedEvent.organizerId || '',
+        isPublic: updatedEvent.isPublic || false,
+        attendees: updatedEvent.attendees || 0,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: `Server error: ${error.message}`,
+    });
   }
-
-  res.json(results);
 });
 
-// GET /api/events/:id — single event
-app.get('/api/events/:id', (req, res) => {
-  const event = events.find(e => e.id === req.params.id);
-  if (!event) return res.status(404).json({ message: 'Event not found' });
-  res.json(event);
+app.delete('/api/events/:eventId', async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    let result;
+    try {
+      result = await eventsCollection.deleteOne({ _id: new ObjectId(eventId) });
+    } catch {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid event ID.',
+      });
+    }
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found.',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Event deleted successfully.',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: `Server error: ${error.message}`,
+    });
+  }
 });
 
-// POST /api/events — create event
-app.post('/api/events', (req, res) => {
-  const newEvent = {
-    ...req.body,
-    id: `event_${Date.now()}`,
-    createdAt: new Date().toISOString(),
-    attendees: 0,
-  };
-  events.push(newEvent);
-  res.status(201).json(newEvent);
-});
-
-// PUT /api/events/:id — update event
-app.put('/api/events/:id', (req, res) => {
-  const index = events.findIndex(e => e.id === req.params.id);
-  if (index === -1) return res.status(404).json({ message: 'Event not found' });
-  events[index] = { ...events[index], ...req.body };
-  res.json(events[index]);
-});
-
-// DELETE /api/events/:id — delete event
-app.delete('/api/events/:id', (req, res) => {
-  const index = events.findIndex(e => e.id === req.params.id);
-  if (index === -1) return res.status(404).json({ message: 'Event not found' });
-  events.splice(index, 1);
-  res.json({ success: true });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+connectToDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error('Failed to connect to MongoDB:', error);
+  });
