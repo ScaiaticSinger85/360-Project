@@ -72,10 +72,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const updateEvent = async (id: string, updates: Partial<Event>): Promise<void> => {
+    const existingEvent = events.find((e) => e.id === id);
+
+    if (!existingEvent) {
+      throw new Error('Event not found');
+    }
+
+    const payload = {
+      ...existingEvent,
+      ...updates,
+    };
+
     const res = await fetch(`${API_BASE_URL}/api/events/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();
@@ -89,7 +100,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteEvent = async (id: string): Promise<void> => {
-    await fetch(`${API_BASE_URL}/api/events/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE_URL}/api/events/${id}`, {
+      method: 'DELETE',
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Failed to delete event');
+    }
+
     setEvents((prev) => prev.filter((e) => e.id !== id));
 
     const updatedRsvps = rsvps.filter((r) => r.eventId !== id);
@@ -117,7 +137,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (status === 'attending') {
       const event = events.find((e) => e.id === eventId);
       if (event) {
-        updateEvent(eventId, { attendees: (event.attendees || 0) + 1 });
+        updateEvent(eventId, {
+          ...event,
+          attendees: (event.attendees || 0) + 1,
+        });
       }
     }
   };
@@ -141,7 +164,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (oldStatus === 'attending' && status !== 'attending') delta = -1;
 
         if (delta !== 0) {
-          updateEvent(eventId, { attendees: (event.attendees || 0) + delta });
+          updateEvent(eventId, {
+            ...event,
+            attendees: (event.attendees || 0) + delta,
+          });
         }
       }
     } else {
