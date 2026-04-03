@@ -19,8 +19,6 @@ export default function UserProfile() {
     bio: '',
   });
 
-  const [isEditing, setIsEditing] = useState(false);
-
   // Sync formData when user loads from localStorage
   useEffect(() => {
     if (user) {
@@ -71,7 +69,6 @@ export default function UserProfile() {
     });
 
     toast.success('Profile updated successfully');
-    setIsEditing(false);
   };
 
   const getInitials = (name: string) => {
@@ -114,7 +111,6 @@ export default function UserProfile() {
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    disabled={!isEditing}
                   />
                 </div>
 
@@ -138,7 +134,6 @@ export default function UserProfile() {
                     placeholder="https://example.com/avatar.jpg"
                     value={formData.avatar}
                     onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
-                    disabled={!isEditing}
                   />
                 </div>
 
@@ -150,37 +145,13 @@ export default function UserProfile() {
                     rows={4}
                     value={formData.bio}
                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    disabled={!isEditing}
                   />
                 </div>
 
                 <div className="flex gap-4">
-                  {isEditing ? (
-                    <>
-                      <Button type="submit" className="flex-1">
-                        Save Changes
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setFormData({
-                            name: user.name,
-                            email: user.email,
-                            avatar: user.avatar || '',
-                            bio: user.bio || '',
-                          });
-                          setIsEditing(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <Button type="button" onClick={() => setIsEditing(true)} className="flex-1">
-                      Edit Profile
-                    </Button>
-                  )}
+                  <Button type="submit" className="flex-1">
+                    Save Changes
+                  </Button>
                 </div>
               </form>
             </CardContent>
