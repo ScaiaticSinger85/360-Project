@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -21,10 +22,9 @@ const CATEGORIES = [
   'Community',
 ];
 
-const API_URL = 'http://localhost:4000';
-
 export default function CreateEvent() {
   const { user } = useAuth();
+  const { createEvent } = useData();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -135,35 +135,21 @@ export default function CreateEvent() {
 
     setIsSubmitting(true);
 
-    const payload = {
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      category: formData.category,
-      date: formData.date,
-      time: formData.time,
-      location: formData.location.trim(),
-      address: formData.address.trim(),
-      capacity: parseInt(formData.capacity),
-      imageUrl: formData.imageUrl.trim(),
-      organizer: user.name,
-      organizerId: user.id,
-      isPublic: formData.isPublic,
-    };
-
     try {
-      const response = await fetch(`${API_URL}/api/events`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+      await createEvent({
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        category: formData.category,
+        date: formData.date,
+        time: formData.time,
+        location: formData.location.trim(),
+        address: formData.address.trim(),
+        capacity: parseInt(formData.capacity),
+        imageUrl: formData.imageUrl.trim(),
+        organizerName: user.name,
+        organizerId: user.id,
+        isPublic: formData.isPublic,
       });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Failed to create event');
-      }
 
       toast.success('Event created successfully!');
       navigate('/my-events');

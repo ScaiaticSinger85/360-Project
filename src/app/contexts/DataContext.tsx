@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Event, RSVP, Review } from '../types';
+import { SAMPLE_EVENTS } from '../data/sampleEvents';
 
 const API_BASE_URL = 'http://localhost:4000';
 
@@ -35,10 +36,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
           throw new Error(data.message || 'Failed to fetch events');
         }
 
-        setEvents(Array.isArray(data.events) ? data.events : []);
+        const mapped = Array.isArray(data.events)
+          ? data.events.map((e: Event & { organizer?: string }) => ({
+              ...e,
+              organizerName: e.organizerName || e.organizer || '',
+            }))
+          : [];
+        setEvents(mapped);
       } catch (error) {
         console.error('Failed to fetch events:', error);
-        setEvents([]);
+        setEvents(SAMPLE_EVENTS);
       }
     };
 
@@ -54,10 +61,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const createEvent = async (
     eventData: Omit<Event, 'id' | 'createdAt' | 'attendees'>
   ): Promise<Event> => {
+    // Server stores 'organizer' but Event type uses 'organizerName'
+    const serverPayload = {
+      title: eventData.title,
+      description: eventData.description,
+      category: eventData.category,
+      date: eventData.date,
+      time: eventData.time,
+      location: eventData.location,
+      address: eventData.address,
+      capacity: eventData.capacity,
+      imageUrl: eventData.imageUrl,
+      organizer: eventData.organizerName,
+      organizerId: eventData.organizerId,
+      isPublic: eventData.isPublic,
+    };
+
     const res = await fetch(`${API_BASE_URL}/api/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(eventData),
+      body: JSON.stringify(serverPayload),
     });
 
     const data = await res.json();
@@ -66,7 +89,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       throw new Error(data.message || 'Failed to create event');
     }
 
-    const newEvent: Event = data.event;
+    const newEvent: Event = { ...data.event, organizerName: data.event.organizer };
     setEvents((prev) => [...prev, newEvent]);
     return newEvent;
   };
