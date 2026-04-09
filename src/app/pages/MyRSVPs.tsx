@@ -1,76 +1,51 @@
-import { Link } from 'react-router';
-import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Badge } from '../components/ui/badge';
-import { Calendar, MapPin, Users } from 'lucide-react';
+import { Calendar, MapPin, Users, Heart } from 'lucide-react';
 import { format } from 'date-fns';
 
-export default function MyRSVPs() {
-  const { user } = useAuth();
-  const { events, rsvps } = useData();
+type EventType = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  date: string;
+  time: string;
+  location: string;
+  address: string;
+  capacity: number;
+  imageUrl: string;
+  organizer: string;
+  organizerId: string;
+  isPublic: boolean;
+  attendees: number;
+};
 
-  if (!user) {
+export default function MyRSVPs() {
+  const { events = [], isLoading, getRSVP } = useData();
+
+  const safeEvents: EventType[] = Array.isArray(events) ? events : [];
+
+  const rsvpEvents = safeEvents.filter((event) => getRSVP(event.id));
+
+  const upcomingEvents = rsvpEvents
+    .filter((event) => new Date(event.date) >= new Date())
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const pastEvents = rsvpEvents
+    .filter((event) => new Date(event.date) < new Date())
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const allEvents = [...upcomingEvents, ...pastEvents];
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <p className="text-center mb-4">Please sign in to view your RSVPs</p>
-            <Link to="/sign-in">
-              <Button className="w-full">Sign In</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <p className="text-gray-600 text-lg">Loading your RSVPs...</p>
       </div>
     );
   }
-
-  const myRsvps = rsvps.filter((r) => r.userId === user.id);
-  const attendingEvents = myRsvps
-    .filter((r) => r.status === 'attending')
-    .map((r) => events.find((e) => e.id === r.eventId))
-    .filter((e) => e && new Date(e.date) >= new Date())
-    .sort((a, b) => new Date(a!.date).getTime() - new Date(b!.date).getTime());
-
-  const maybeEvents = myRsvps
-    .filter((r) => r.status === 'maybe')
-    .map((r) => events.find((e) => e.id === r.eventId))
-    .filter((e) => e && new Date(e.date) >= new Date())
-    .sort((a, b) => new Date(a!.date).getTime() - new Date(b!.date).getTime());
-
-  const EventCard = ({ event }: { event: any }) => (
-    <Link to={`/events/${event.id}`}>
-      <Card className="hover:shadow-md transition-shadow">
-        <div className="aspect-video overflow-hidden">
-          <img
-            src={event.imageUrl}
-            alt={event.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <CardContent className="p-6">
-          <Badge className="mb-2">{event.category}</Badge>
-          <h3 className="text-xl font-bold mb-3 line-clamp-2">{event.title}</h3>
-          <div className="space-y-2 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span>{format(new Date(event.date), 'MMM d, yyyy')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              <span className="line-clamp-1">{event.location}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span>{event.attendees} attending</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -78,58 +53,93 @@ export default function MyRSVPs() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">My RSVPs</h1>
           <p className="text-lg text-gray-600">
-            Events you're attending or interested in
+            Events you’ve saved or RSVP’d to
           </p>
         </div>
 
-        <Tabs defaultValue="attending" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="attending">
-              Attending ({attendingEvents.length})
-            </TabsTrigger>
-            <TabsTrigger value="maybe">
-              Maybe ({maybeEvents.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="attending">
-            {attendingEvents.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {attendingEvents.map((event) => (
-                  <EventCard key={event!.id} event={event} />
-                ))}
-              </div>
+        <div className="mb-6">
+          <p className="text-gray-600">
+            {allEvents.length === 0 ? (
+              <span className="text-red-600 font-semibold">No RSVP events yet</span>
             ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-gray-600 mb-4">You're not attending any upcoming events</p>
-                  <Link to="/events">
-                    <Button>Browse Events</Button>
-                  </Link>
-                </CardContent>
-              </Card>
+              <span>
+                You have <span className="font-semibold">{allEvents.length}</span>{' '}
+                RSVP{allEvents.length === 1 ? '' : 's'}
+              </span>
             )}
-          </TabsContent>
+          </p>
+        </div>
 
-          <TabsContent value="maybe">
-            {maybeEvents.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {maybeEvents.map((event) => (
-                  <EventCard key={event!.id} event={event} />
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-gray-600 mb-4">No events marked as maybe</p>
-                  <Link to="/events">
-                    <Button>Browse Events</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
+        {allEvents.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {allEvents.map((event) => (
+              <Link key={event.id} to={`/events/${event.id}`}>
+                <Card className="hover:shadow-lg transition-shadow h-full">
+                  <div className="aspect-video overflow-hidden bg-gray-100">
+                    <img
+                      src={event.imageUrl || 'https://via.placeholder.com/800x450?text=Event+Image'}
+                      alt={event.title}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-blue-600">
+                        {event.category}
+                      </span>
+                      <Heart className="h-4 w-4 fill-current text-red-500" />
+                    </div>
+
+                    <h3 className="text-xl font-bold mb-3 line-clamp-2">
+                      {event.title}
+                    </h3>
+
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                      {event.description}
+                    </p>
+
+                    <div className="space-y-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 flex-shrink-0" />
+                        <span>{format(new Date(event.date), 'EEEE, MMMM d, yyyy')}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 flex-shrink-0" />
+                        <span className="line-clamp-1">{event.location}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 flex-shrink-0" />
+                        <span>
+                          {event.attendees} / {event.capacity} attending
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <Button className="w-full">View Details</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              No RSVP events yet
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Browse events and RSVP to see them here
+            </p>
+            <Link to="/events">
+              <Button>Browse Events</Button>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

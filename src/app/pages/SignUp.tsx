@@ -14,14 +14,16 @@ export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
   const { signup } = useAuth();
   const navigate = useNavigate();
 
   const validateForm = (): boolean => {
     if (!name || !email || !password || !confirmPassword) {
-      setError('Please fill in all fields');
+      setError('Please fill in all required fields');
       return false;
     }
 
@@ -45,6 +47,11 @@ export default function SignUp() {
       return false;
     }
 
+    if (avatarFile && !avatarFile.type.startsWith('image/')) {
+      setError('Please upload a valid image file');
+      return false;
+    }
+
     return true;
   };
 
@@ -58,7 +65,13 @@ export default function SignUp() {
 
     setIsLoading(true);
 
-    const result = await signup(name, email, password);
+    const result = await signup(
+      name,
+      email,
+      password,
+      confirmPassword,
+      avatarFile
+    );
 
     setIsLoading(false);
 
@@ -89,6 +102,7 @@ export default function SignUp() {
               Create an account to start organizing and attending events
             </CardDescription>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
@@ -120,6 +134,19 @@ export default function SignUp() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="avatar">Profile Image</Label>
+                <Input
+                  id="avatar"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+                />
+                <p className="text-xs text-gray-500">
+                  Optional. JPG, PNG, WEBP, or GIF up to 5MB
+                </p>
               </div>
 
               <div className="space-y-2">

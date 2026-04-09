@@ -1,253 +1,259 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Event, RSVP, Review } from '../types';
-import { SAMPLE_EVENTS } from '../data/sampleEvents';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
-const API_BASE_URL = 'http://localhost:4000';
+type EventType = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  date: string;
+  time: string;
+  location: string;
+  address: string;
+  capacity: number;
+  imageUrl: string;
+  organizer: string;
+  organizerId: string;
+  isPublic: boolean;
+  attendees: number;
+};
 
-interface DataContextType {
-  events: Event[];
-  rsvps: RSVP[];
-  reviews: Review[];
-  createEvent: (event: Omit<Event, 'id' | 'createdAt' | 'attendees'>) => Promise<Event>;
-  updateEvent: (id: string, updates: Partial<Event>) => Promise<void>;
-  deleteEvent: (id: string) => Promise<void>;
-  createRSVP: (eventId: string, userId: string, status: RSVP['status']) => void;
-  updateRSVP: (eventId: string, userId: string, status: RSVP['status']) => void;
-  getRSVP: (eventId: string, userId: string) => RSVP | undefined;
-  createReview: (review: Omit<Review, 'id' | 'createdAt'>) => void;
-  getEventReviews: (eventId: string) => Review[];
-  searchEvents: (query: string, category?: string) => Promise<Event[]>;
-}
+type CreateEventData = {
+  title: string;
+  description: string;
+  category: string;
+  date: string;
+  time: string;
+  location: string;
+  address: string;
+  capacity: number;
+  imageUrl: string;
+  organizer: string;
+  organizerId: string;
+  isPublic: boolean;
+};
+
+type UpdateEventData = {
+  title: string;
+  description: string;
+  category: string;
+  date: string;
+  time: string;
+  location: string;
+  address: string;
+  capacity: number;
+  imageUrl: string;
+  isPublic: boolean;
+  attendees?: number;
+};
+
+type ReviewType = {
+  id: string;
+  eventId: string;
+  author: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+};
+
+type RSVPMap = Record<string, boolean>;
+
+type DataContextType = {
+  events: EventType[];
+  isLoading: boolean;
+  fetchEvents: () => Promise<void>;
+  getEventsByOrganizerId: (organizerId: string) => Promise<EventType[]>;
+  createEvent: (eventData: CreateEventData) => Promise<EventType>;
+  updateEvent: (eventId: string, eventData: UpdateEventData) => Promise<EventType>;
+  deleteEvent: (eventId: string) => Promise<void>;
+  getRSVP: (eventId: string) => boolean;
+  toggleRSVP: (eventId: string) => void;
+  getEventReviews: (eventId: string) => ReviewType[];
+  addEventReview: (eventId: string, review: Omit<ReviewType, 'id' | 'eventId' | 'createdAt'>) => void;
+};
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+const API_BASE_URL = 'http://localhost:4000';
+const RSVP_STORAGE_KEY = 'event_rsvps';
+const REVIEWS_STORAGE_KEY = 'event_reviews';
+
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [rsvps, setRsvps] = useState<RSVP[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [events, setEvents] = useState<EventType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [rsvps, setRsvps] = useState<RSVPMap>({});
+  const [reviews, setReviews] = useState<ReviewType[]>([]);
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/events`);
-        const data = await res.json();
+  const fetchEvents = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/events`);
+      const data = await response.json();
 
-        if (!res.ok || !data.success) {
-          throw new Error(data.message || 'Failed to fetch events');
-        }
-
-        const mapped = Array.isArray(data.events)
-          ? data.events.map((e: Event & { organizer?: string }) => ({
-              ...e,
-              organizerName: e.organizerName || e.organizer || '',
-            }))
-          : [];
-        setEvents(mapped);
-      } catch (error) {
-        console.error('Failed to fetch events:', error);
-        setEvents(SAMPLE_EVENTS);
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to fetch events');
       }
-    };
 
-    fetchEvents();
+      setEvents(data.events || []);
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+      setEvents([]);
+    }
+  };
 
-    const storedRsvps = localStorage.getItem('rsvps');
-    const storedReviews = localStorage.getItem('reviews');
+  const getEventsByOrganizerId = async (organizerId: string) => {
+    const response = await fetch(
+      `${API_BASE_URL}/api/events/user/${encodeURIComponent(organizerId)}`
+    );
 
-    if (storedRsvps) setRsvps(JSON.parse(storedRsvps));
-    if (storedReviews) setReviews(JSON.parse(storedReviews));
-  }, []);
+    const data = await response.json();
 
-  const createEvent = async (
-    eventData: Omit<Event, 'id' | 'createdAt' | 'attendees'>
-  ): Promise<Event> => {
-    // Server stores 'organizer' but Event type uses 'organizerName'
-    const serverPayload = {
-      title: eventData.title,
-      description: eventData.description,
-      category: eventData.category,
-      date: eventData.date,
-      time: eventData.time,
-      location: eventData.location,
-      address: eventData.address,
-      capacity: eventData.capacity,
-      imageUrl: eventData.imageUrl,
-      organizer: eventData.organizerName,
-      organizerId: eventData.organizerId,
-      isPublic: eventData.isPublic,
-    };
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Failed to fetch user events');
+    }
 
-    const res = await fetch(`${API_BASE_URL}/api/events`, {
+    return data.events || [];
+  };
+
+  const createEvent = async (eventData: CreateEventData) => {
+    const response = await fetch(`${API_BASE_URL}/api/events`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(serverPayload),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(eventData),
     });
 
-    const data = await res.json();
+    const data = await response.json();
 
-    if (!res.ok || !data.success) {
+    if (!response.ok || !data.success) {
       throw new Error(data.message || 'Failed to create event');
     }
 
-    const newEvent: Event = { ...data.event, organizerName: data.event.organizer };
+    const newEvent = data.event;
     setEvents((prev) => [...prev, newEvent]);
+
     return newEvent;
   };
 
-  const updateEvent = async (id: string, updates: Partial<Event>): Promise<void> => {
-    const existingEvent = events.find((e) => e.id === id);
-
-    if (!existingEvent) {
-      throw new Error('Event not found');
-    }
-
-    const payload = {
-      ...existingEvent,
-      ...updates,
-    };
-
-    const res = await fetch(`${API_BASE_URL}/api/events/${id}`, {
+  const updateEvent = async (eventId: string, eventData: UpdateEventData) => {
+    const response = await fetch(`${API_BASE_URL}/api/events/${eventId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(eventData),
     });
 
-    const data = await res.json();
+    const data = await response.json();
 
-    if (!res.ok || !data.success) {
+    if (!response.ok || !data.success) {
       throw new Error(data.message || 'Failed to update event');
     }
 
-    const updated: Event = data.event;
-    setEvents((prev) => prev.map((e) => (e.id === id ? updated : e)));
+    const updatedEvent = data.event;
+
+    setEvents((prev) =>
+      prev.map((event) => (event.id === eventId ? updatedEvent : event))
+    );
+
+    return updatedEvent;
   };
 
-  const deleteEvent = async (id: string): Promise<void> => {
-    const res = await fetch(`${API_BASE_URL}/api/events/${id}`, {
+  const deleteEvent = async (eventId: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/events/${eventId}`, {
       method: 'DELETE',
     });
 
-    const data = await res.json();
+    const data = await response.json();
 
-    if (!res.ok || !data.success) {
+    if (!response.ok || !data.success) {
       throw new Error(data.message || 'Failed to delete event');
     }
 
-    setEvents((prev) => prev.filter((e) => e.id !== id));
-
-    const updatedRsvps = rsvps.filter((r) => r.eventId !== id);
-    setRsvps(updatedRsvps);
-    localStorage.setItem('rsvps', JSON.stringify(updatedRsvps));
-
-    const updatedReviews = reviews.filter((r) => r.eventId !== id);
-    setReviews(updatedReviews);
-    localStorage.setItem('reviews', JSON.stringify(updatedReviews));
+    setEvents((prev) => prev.filter((event) => event.id !== eventId));
   };
 
-  const createRSVP = (eventId: string, userId: string, status: RSVP['status']) => {
-    const newRsvp: RSVP = {
-      id: `rsvp_${Date.now()}`,
-      eventId,
-      userId,
-      status,
-      createdAt: new Date().toISOString(),
-    };
-
-    const updated = [...rsvps, newRsvp];
-    setRsvps(updated);
-    localStorage.setItem('rsvps', JSON.stringify(updated));
-
-    if (status === 'attending') {
-      const event = events.find((e) => e.id === eventId);
-      if (event) {
-        updateEvent(eventId, {
-          ...event,
-          attendees: (event.attendees || 0) + 1,
-        });
-      }
-    }
+  const getRSVP = (eventId: string) => {
+    return !!rsvps[eventId];
   };
 
-  const updateRSVP = (eventId: string, userId: string, status: RSVP['status']) => {
-    const existing = rsvps.find((r) => r.eventId === eventId && r.userId === userId);
+  const toggleRSVP = (eventId: string) => {
+    setRsvps((prev) => {
+      const updated = {
+        ...prev,
+        [eventId]: !prev[eventId],
+      };
 
-    if (existing) {
-      const oldStatus = existing.status;
-      const updated = rsvps.map((r) =>
-        r.eventId === eventId && r.userId === userId ? { ...r, status } : r
-      );
-
-      setRsvps(updated);
-      localStorage.setItem('rsvps', JSON.stringify(updated));
-
-      const event = events.find((e) => e.id === eventId);
-      if (event) {
-        let delta = 0;
-        if (oldStatus !== 'attending' && status === 'attending') delta = 1;
-        if (oldStatus === 'attending' && status !== 'attending') delta = -1;
-
-        if (delta !== 0) {
-          updateEvent(eventId, {
-            ...event,
-            attendees: (event.attendees || 0) + delta,
-          });
-        }
-      }
-    } else {
-      createRSVP(eventId, userId, status);
-    }
-  };
-
-  const getRSVP = (eventId: string, userId: string): RSVP | undefined =>
-    rsvps.find((r) => r.eventId === eventId && r.userId === userId);
-
-  const createReview = (reviewData: Omit<Review, 'id' | 'createdAt'>) => {
-    const newReview: Review = {
-      ...reviewData,
-      id: `review_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-
-    const updated = [...reviews, newReview];
-    setReviews(updated);
-    localStorage.setItem('reviews', JSON.stringify(updated));
-  };
-
-  const getEventReviews = (eventId: string): Review[] =>
-    reviews.filter((r) => r.eventId === eventId);
-
-  const searchEvents = async (query: string, category?: string): Promise<Event[]> => {
-    const filtered = events.filter((event) => {
-      const matchesQuery =
-        !query.trim() ||
-        event.title.toLowerCase().includes(query.toLowerCase()) ||
-        event.description.toLowerCase().includes(query.toLowerCase()) ||
-        event.location.toLowerCase().includes(query.toLowerCase());
-
-      const matchesCategory =
-        !category || category === 'all' || event.category === category;
-
-      return matchesQuery && matchesCategory;
+      localStorage.setItem(RSVP_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
     });
-
-    return filtered;
   };
+
+  const getEventReviews = (eventId: string) => {
+    return reviews.filter((review) => review.eventId === eventId);
+  };
+
+  const addEventReview = (
+    eventId: string,
+    review: Omit<ReviewType, 'id' | 'eventId' | 'createdAt'>
+  ) => {
+    const newReview: ReviewType = {
+      id: crypto.randomUUID(),
+      eventId,
+      author: review.author,
+      rating: review.rating,
+      comment: review.comment,
+      createdAt: new Date().toISOString(),
+    };
+
+    setReviews((prev) => {
+      const updated = [...prev, newReview];
+      localStorage.setItem(REVIEWS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      setIsLoading(true);
+      await fetchEvents();
+      setIsLoading(false);
+    };
+
+    loadEvents();
+
+    const savedRsvps = localStorage.getItem(RSVP_STORAGE_KEY);
+    if (savedRsvps) {
+      try {
+        setRsvps(JSON.parse(savedRsvps));
+      } catch {
+        localStorage.removeItem(RSVP_STORAGE_KEY);
+      }
+    }
+
+    const savedReviews = localStorage.getItem(REVIEWS_STORAGE_KEY);
+    if (savedReviews) {
+      try {
+        setReviews(JSON.parse(savedReviews));
+      } catch {
+        localStorage.removeItem(REVIEWS_STORAGE_KEY);
+      }
+    }
+  }, []);
 
   return (
     <DataContext.Provider
       value={{
         events,
-        rsvps,
-        reviews,
+        isLoading,
+        fetchEvents,
+        getEventsByOrganizerId,
         createEvent,
         updateEvent,
         deleteEvent,
-        createRSVP,
-        updateRSVP,
         getRSVP,
-        createReview,
+        toggleRSVP,
         getEventReviews,
-        searchEvents,
+        addEventReview,
       }}
     >
       {children}
@@ -258,7 +264,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 export function useData() {
   const context = useContext(DataContext);
 
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useData must be used within a DataProvider');
   }
 
