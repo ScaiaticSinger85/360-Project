@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
@@ -9,14 +10,57 @@ import { Calendar, MapPin, Users, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
+type EventType = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  date: string;
+  time: string;
+  location: string;
+  address: string;
+  capacity: number;
+  imageUrl: string;
+  organizer: string;
+  organizerId: string;
+  isPublic: boolean;
+  attendees: number;
+};
+
 export default function MyEvents() {
   const { user } = useAuth();
-  const { events, deleteEvent } = useData();
+  const { deleteEvent, getEventsByOrganizerId } = useData();
+  const [myEvents, setMyEvents] = useState<EventType[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadMyEvents = async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const userEvents = await getEventsByOrganizerId(user.id);
+      setMyEvents(userEvents);
+    } catch {
+      toast.error('Failed to load your events');
+      setMyEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMyEvents();
+  }, [user]);
 
   const handleDelete = async (id: string, title: string) => {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+
     try {
       await deleteEvent(id);
+      setMyEvents((prev) => prev.filter((event) => event.id !== id));
       toast.success('Event deleted');
     } catch {
       toast.error('Failed to delete event');
@@ -38,15 +82,23 @@ export default function MyEvents() {
     );
   }
 
-  const myEvents = events.filter((e) => e.organizerId === user.id);
-  const upcomingEvents = myEvents.filter(
-    (e) => new Date(e.date) >= new Date()
-  ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const pastEvents = myEvents.filter(
-    (e) => new Date(e.date) < new Date()
-  ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-600 text-lg">Loading your events...</p>
+      </div>
+    );
+  }
 
-  const EventCard = ({ event }: { event: typeof events[0] }) => (
+  const upcomingEvents = myEvents
+    .filter((e) => new Date(e.date) >= new Date())
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const pastEvents = myEvents
+    .filter((e) => new Date(e.date) < new Date())
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const EventCard = ({ event }: { event: EventType }) => (
     <Card className="hover:shadow-md transition-shadow">
       <div className="aspect-video overflow-hidden">
         <img
@@ -55,6 +107,7 @@ export default function MyEvents() {
           className="w-full h-full object-cover"
         />
       </div>
+
       <CardContent className="p-6">
         <div className="flex items-center gap-2 mb-2">
           <Badge>{event.category}</Badge>
@@ -62,31 +115,42 @@ export default function MyEvents() {
             <Badge variant="destructive">Full</Badge>
           )}
         </div>
+
         <h3 className="text-xl font-bold mb-3 line-clamp-2">{event.title}</h3>
+
         <div className="space-y-2 text-sm text-gray-600 mb-4">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
             <span>{format(new Date(event.date), 'MMM d, yyyy')}</span>
           </div>
+
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
             <span className="line-clamp-1">{event.location}</span>
           </div>
+
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            <span>{event.attendees} / {event.capacity} attending</span>
+            <span>
+              {event.attendees} / {event.capacity} attending
+            </span>
           </div>
         </div>
+
         <div className="flex gap-2">
           <Link to={`/events/${event.id}`} className="flex-1">
-            <Button variant="outline" className="w-full">View</Button>
+            <Button variant="outline" className="w-full">
+              View
+            </Button>
           </Link>
+
           <Link to={`/edit-event/${event.id}`}>
             <Button variant="outline" className="gap-2">
               <Edit className="h-4 w-4" />
               Edit
             </Button>
           </Link>
+
           <Button
             variant="outline"
             className="gap-2 text-red-600 hover:text-red-700"
@@ -105,10 +169,9 @@ export default function MyEvents() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">My Events</h1>
-            <p className="text-lg text-gray-600">
-              Manage your created events
-            </p>
+            <p className="text-lg text-gray-600">Manage your created events</p>
           </div>
+
           <Link to="/create-event">
             <Button size="lg">Create New Event</Button>
           </Link>
@@ -134,7 +197,9 @@ export default function MyEvents() {
             ) : (
               <Card>
                 <CardContent className="py-12 text-center">
-                  <p className="text-gray-600 mb-4">You haven't created any upcoming events yet</p>
+                  <p className="text-gray-600 mb-4">
+                    You haven't created any upcoming events yet
+                  </p>
                   <Link to="/create-event">
                     <Button>Create Your First Event</Button>
                   </Link>
