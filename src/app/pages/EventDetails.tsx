@@ -1,60 +1,66 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Separator } from '../components/ui/separator';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
-import { 
-  Calendar, 
-  MapPin, 
-  Users, 
-  Clock, 
-  User,
+import {
+  Calendar,
+  MapPin,
+  Users,
+  Clock,
   ArrowLeft,
-  Check,
-  X,
   Edit,
   Trash2,
-  Star
+  Star,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '../components/ui/alert-dialog';
+
+type ReviewType = {
+  id: string;
+  eventId: string;
+  author: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+};
 
 export default function EventDetails() {
   const { id } = useParams();
+  const eventId = id;
+
   const { user } = useAuth();
-  const { events, getRSVP, updateRSVP, createReview, getEventReviews, deleteEvent } = useData();
+  const {
+    events,
+    toggleRSVP,
+    getRSVP,
+    getEventReviews,
+    addEventReview,
+    deleteEvent,
+  } = useData();
+
   const navigate = useNavigate();
 
-  const event = events.find((e) => e.id === id);
-  const [userRsvp, setUserRsvp] = useState(user ? getRSVP(id!, user.id) : undefined);
-  const [reviews, setReviews] = useState(getEventReviews(id!));
+  const event = (events || []).find((e) => e.id === eventId);
+
+  const [isRsvped, setIsRsvped] = useState(false);
+  const [reviews, setReviews] = useState<ReviewType[]>([]);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
 
   useEffect(() => {
-    if (user && id) {
-      setUserRsvp(getRSVP(id, user.id));
+    if (eventId) {
+      setReviews(getEventReviews(eventId));
     }
-    if (id) {
-      setReviews(getEventReviews(id));
+
+    if (eventId && user) {
+      setIsRsvped(getRSVP(eventId));
     }
-  }, [user, id, events]);
+  }, [eventId, user, events]);
 
   if (!event) {
     return (
@@ -69,21 +75,25 @@ export default function EventDetails() {
     );
   }
 
-  const handleRSVP = (status: 'attending' | 'maybe' | 'not-attending') => {
+  const handleRSVP = async () => {
     if (!user) {
-      toast.error('Please sign in to RSVP');
+      toast.error('Please sign in');
       navigate('/sign-in');
       return;
     }
 
-    updateRSVP(event.id, user.id, status);
-    setUserRsvp(getRSVP(event.id, user.id));
-    toast.success(`RSVP updated to: ${status}`);
+    try {
+      await toggleRSVP(event.id);
+      setIsRsvped(!isRsvped);
+      toast.success(isRsvped ? 'RSVP removed' : 'RSVP successful');
+    } catch {
+      toast.error('Failed to RSVP');
+    }
   };
 
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleReview = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user) {
       toast.error('Please sign in to leave a review');
       navigate('/sign-in');
@@ -91,14 +101,12 @@ export default function EventDetails() {
     }
 
     if (!comment.trim()) {
-      toast.error('Please write a comment');
+      toast.error('Please write a review');
       return;
     }
 
-    createReview({
-      eventId: event.id,
-      userId: user.id,
-      userName: user.name,
+    addEventReview(event.id, {
+      author: user.name,
       rating,
       comment: comment.trim(),
     });
@@ -106,25 +114,26 @@ export default function EventDetails() {
     setReviews(getEventReviews(event.id));
     setComment('');
     setRating(5);
-    toast.success('Review submitted!');
+    toast.success('Review submitted');
   };
 
-  const handleDeleteEvent = () => {
-    deleteEvent(event.id);
-    toast.success('Event deleted successfully');
-    navigate('/my-events');
+  const handleDelete = async () => {
+    try {
+      await deleteEvent(event.id);
+      toast.success('Event deleted successfully');
+      navigate('/events');
+    } catch {
+      toast.error('Failed to delete event');
+    }
   };
 
-  const isOrganizer = user && event.organizerId === user.id;
-  const isAdmin = user && user.role === 'admin';
-  const canEdit = isOrganizer || isAdmin;
+  const isOrganizer = user?.id === event.organizerId;
   const spotsRemaining = event.capacity - event.attendees;
   const isFull = spotsRemaining <= 0;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Back Button */}
         <Link to="/events">
           <Button variant="ghost" className="mb-6 gap-2">
             <ArrowLeft className="h-4 w-4" />
@@ -132,28 +141,24 @@ export default function EventDetails() {
           </Button>
         </Link>
 
-        {/* Event Image */}
-        <div className="aspect-video w-full overflow-hidden rounded-lg mb-8">
+        <div className="aspect-video w-full overflow-hidden rounded-lg mb-8 bg-gray-100">
           <img
-            src={event.imageUrl}
+            src={event.imageUrl || 'https://via.placeholder.com/1200x675?text=Event+Image'}
             alt={event.title}
             className="w-full h-full object-cover"
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Title and Category */}
             <div>
               <Badge className="mb-3">{event.category}</Badge>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">{event.title}</h1>
               <p className="text-gray-600">
-                Organized by <span className="font-semibold">{event.organizerName}</span>
+                Organized by <span className="font-semibold">{event.organizer}</span>
               </p>
             </div>
 
-            {/* Description */}
             <Card>
               <CardHeader>
                 <CardTitle>About This Event</CardTitle>
@@ -163,7 +168,6 @@ export default function EventDetails() {
               </CardContent>
             </Card>
 
-            {/* Reviews Section */}
             <Card>
               <CardHeader>
                 <CardTitle>Reviews ({reviews.length})</CardTitle>
@@ -173,13 +177,13 @@ export default function EventDetails() {
                   <div className="space-y-4">
                     {reviews.map((review) => (
                       <div key={review.id} className="border-b pb-4 last:border-b-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <User className="h-4 w-4 text-gray-400" />
-                          <span className="font-semibold">{review.userName}</span>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-semibold">{review.author}</span>
                           <span className="text-sm text-gray-500">
                             {format(new Date(review.createdAt), 'MMM d, yyyy')}
                           </span>
                         </div>
+
                         <div className="flex gap-1 mb-2">
                           {Array.from({ length: 5 }).map((_, i) => (
                             <Star
@@ -192,20 +196,21 @@ export default function EventDetails() {
                             />
                           ))}
                         </div>
+
                         <p className="text-gray-700">{review.comment}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <p className="text-gray-500 text-center py-4">
-                    No reviews yet. Be the first to review this event!
+                    No reviews yet. Be the first to review this event.
                   </p>
                 )}
 
-                {user && userRsvp?.status === 'attending' && (
+                {user && isRsvped && (
                   <>
-                    <Separator className="my-6" />
-                    <form onSubmit={handleSubmitReview} className="space-y-4">
+                    <div className="my-6 border-t" />
+                    <form onSubmit={handleReview} className="space-y-4">
                       <div>
                         <Label>Your Rating</Label>
                         <div className="flex gap-2 mt-2">
@@ -227,6 +232,7 @@ export default function EventDetails() {
                           ))}
                         </div>
                       </div>
+
                       <div>
                         <Label htmlFor="comment">Your Review</Label>
                         <Textarea
@@ -238,6 +244,7 @@ export default function EventDetails() {
                           className="mt-2"
                         />
                       </div>
+
                       <Button type="submit">Submit Review</Button>
                     </form>
                   </>
@@ -246,9 +253,7 @@ export default function EventDetails() {
             </Card>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Event Details Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Event Details</CardTitle>
@@ -300,46 +305,27 @@ export default function EventDetails() {
               </CardContent>
             </Card>
 
-            {/* RSVP Card */}
-            {user && user.role !== 'unregistered' && !isOrganizer && (
+            {user && !isOrganizer && (
               <Card>
                 <CardHeader>
                   <CardTitle>RSVP</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {userRsvp && (
+                  {isRsvped && (
                     <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                       <p className="text-sm font-semibold text-blue-900">
-                        Your current status: {userRsvp.status}
+                        You have RSVP’d to this event
                       </p>
                     </div>
                   )}
 
                   <Button
-                    onClick={() => handleRSVP('attending')}
-                    className="w-full gap-2"
-                    variant={userRsvp?.status === 'attending' ? 'default' : 'outline'}
-                    disabled={isFull && userRsvp?.status !== 'attending'}
+                    onClick={handleRSVP}
+                    className="w-full"
+                    variant={isRsvped ? 'outline' : 'default'}
+                    disabled={isFull && !isRsvped}
                   >
-                    <Check className="h-4 w-4" />
-                    Attending
-                  </Button>
-
-                  <Button
-                    onClick={() => handleRSVP('maybe')}
-                    className="w-full gap-2"
-                    variant={userRsvp?.status === 'maybe' ? 'default' : 'outline'}
-                  >
-                    Maybe
-                  </Button>
-
-                  <Button
-                    onClick={() => handleRSVP('not-attending')}
-                    className="w-full gap-2"
-                    variant={userRsvp?.status === 'not-attending' ? 'default' : 'outline'}
-                  >
-                    <X className="h-4 w-4" />
-                    Can't Go
+                    {isRsvped ? 'Cancel RSVP' : 'RSVP'}
                   </Button>
                 </CardContent>
               </Card>
@@ -358,8 +344,7 @@ export default function EventDetails() {
               </Card>
             )}
 
-            {/* Edit/Delete for organizers and admins */}
-            {canEdit && (
+            {isOrganizer && (
               <Card>
                 <CardHeader>
                   <CardTitle>Manage Event</CardTitle>
@@ -372,29 +357,10 @@ export default function EventDetails() {
                     </Button>
                   </Link>
 
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button className="w-full gap-2" variant="destructive">
-                        <Trash2 className="h-4 w-4" />
-                        Delete Event
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete the event
-                          and all associated RSVPs and reviews.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteEvent}>
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <Button className="w-full gap-2" variant="destructive" onClick={handleDelete}>
+                    <Trash2 className="h-4 w-4" />
+                    Delete Event
+                  </Button>
                 </CardContent>
               </Card>
             )}
