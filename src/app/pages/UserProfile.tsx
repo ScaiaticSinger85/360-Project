@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Link } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -15,23 +15,92 @@ export default function UserProfile() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    avatar: '',
     bio: '',
   });
 
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Sync formData when user loads from localStorage
   useEffect(() => {
     if (user) {
       setFormData({
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar || '',
+        name: user.name || '',
+        email: user.email || '',
         bio: user.bio || '',
       });
+      setAvatarFile(null);
     }
   }, [user]);
+
+  const previewUrl = useMemo(() => {
+    if (avatarFile) {
+      return URL.createObjectURL(avatarFile);
+    }
+
+    return user?.avatarUrl || undefined;
+  }, [avatarFile, user]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const getInitials = (name: string) => {
+    if (!name.trim()) return 'U';
+
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelClick = () => {
+    if (!user) return;
+
+    setFormData({
+      name: user.name || '',
+      email: user.email || '',
+      bio: user.bio || '',
+    });
+    setAvatarFile(null);
+    setIsEditing(false);
+  };
+
+  const handleSaveClick = async () => {
+    if (!formData.name.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+
+    setIsSaving(true);
+
+    const result = await updateProfile({
+      name: formData.name.trim(),
+      bio: formData.bio.trim(),
+      avatarFile,
+    });
+
+    setIsSaving(false);
+
+    if (result.success) {
+      toast.success('Profile updated successfully');
+      setIsEditing(false);
+      setAvatarFile(null);
+    } else {
+      toast.error(result.error || 'Failed to update profile');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -56,40 +125,12 @@ export default function UserProfile() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.name.trim()) {
-      toast.error('Name is required');
-      return;
-    }
-
-    updateProfile({
-      name: formData.name.trim(),
-      avatar: formData.avatar.trim(),
-      bio: formData.bio.trim(),
-    });
-
-    toast.success('Profile updated successfully');
-    setIsEditing(false);
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-bold text-gray-900 mb-8">Profile Settings</h1>
 
         <div className="space-y-6">
-          {/* Profile Card */}
           <Card>
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
@@ -97,109 +138,123 @@ export default function UserProfile() {
                 Update your personal details and profile picture
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="flex justify-center mb-6">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src={formData.avatar} />
-                    <AvatarFallback className="text-2xl">
-                      {getInitials(formData.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    disabled={!isEditing}
+            <CardContent className="space-y-6">
+              <div className="flex justify-center mb-6">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage
+                    src={previewUrl}
+                    alt={formData.name || 'Profile image'}
                   />
-                </div>
+                  <AvatarFallback className="text-2xl">
+                    {getInitials(formData.name)}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    disabled
-                    className="bg-gray-50"
-                  />
-                  <p className="text-xs text-gray-500">Email cannot be changed</p>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  disabled={!isEditing || isSaving}
+                  className={!isEditing ? 'bg-gray-50 cursor-default' : ''}
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="avatar">Avatar URL</Label>
-                  <Input
-                    id="avatar"
-                    type="url"
-                    placeholder="https://example.com/avatar.jpg"
-                    value={formData.avatar}
-                    onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  disabled
+                  className="bg-gray-50 cursor-default"
+                />
+                <p className="text-xs text-gray-500">Email cannot be changed</p>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    placeholder="Tell us about yourself..."
-                    rows={4}
-                    value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="avatar">Profile Image</Label>
+                <Input
+                  id="avatar"
+                  type="file"
+                  accept="image/*"
+                  disabled={!isEditing || isSaving}
+                  onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+                  className={!isEditing ? 'bg-gray-50 cursor-not-allowed' : ''}
+                />
+                <p className="text-xs text-gray-500">Upload a new profile image</p>
+              </div>
 
-                <div className="flex gap-4">
-                  {isEditing ? (
-                    <>
-                      <Button type="submit" className="flex-1">
-                        Save Changes
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setFormData({
-                            name: user.name,
-                            email: user.email,
-                            avatar: user.avatar || '',
-                            bio: user.bio || '',
-                          });
-                          setIsEditing(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <Button type="button" onClick={() => setIsEditing(true)} className="flex-1">
-                      Edit Profile
+              <div className="space-y-2">
+                <Label htmlFor="bio">Bio</Label>
+                <Textarea
+                  id="bio"
+                  placeholder="Tell us about yourself..."
+                  rows={4}
+                  value={formData.bio}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, bio: e.target.value }))
+                  }
+                  disabled={!isEditing || isSaving}
+                  className={!isEditing ? 'bg-gray-50 cursor-default' : ''}
+                />
+              </div>
+
+              <div className="flex gap-4">
+                {!isEditing ? (
+                  <Button
+                    type="button"
+                    onClick={handleEditClick}
+                    className="flex-1"
+                  >
+                    Edit Profile
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      onClick={handleSaveClick}
+                      className="flex-1"
+                      disabled={isSaving}
+                    >
+                      {isSaving ? 'Saving...' : 'Save Changes'}
                     </Button>
-                  )}
-                </div>
-              </form>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCancelClick}
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
+              </div>
             </CardContent>
           </Card>
 
-          {/* Account Info Card */}
           <Card>
             <CardHeader>
               <CardTitle>Account Information</CardTitle>
             </CardHeader>
+
             <CardContent className="space-y-4">
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-600">User ID</span>
                 <span className="font-mono text-sm">{user.id}</span>
               </div>
+
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-600">Role</span>
                 <span className="font-semibold capitalize">{user.role}</span>
               </div>
+
               <div className="flex justify-between py-2">
                 <span className="text-gray-600">Member Since</span>
                 <span>
