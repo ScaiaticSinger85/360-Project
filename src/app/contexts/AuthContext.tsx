@@ -1,30 +1,61 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '../types';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
-interface AuthContextType {
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  bio?: string;
+  avatarUrl?: string;
+  createdAt: string;
+};
+
+type SignupResult = {
+  success: boolean;
+  error?: string;
+};
+
+type LoginResult = {
+  success: boolean;
+  error?: string;
+};
+
+type UpdateProfileData = {
+  name: string;
+  bio: string;
+  avatarFile?: File | null;
+};
+
+type AuthContextType = {
   user: User | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  updateProfile: (updates: Partial<User>) => void;
   isLoading: boolean;
-}
+  signup: (
+    name: string,
+    email: string,
+    password: string,
+    passwordConfirm: string,
+    avatarFile?: File | null
+  ) => Promise<SignupResult>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  logout: () => void;
+  updateProfile: (data: UpdateProfileData) => Promise<{ success: boolean; error?: string }>;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const CURRENT_USER_KEY = 'currentUser';
 const API_BASE_URL = 'http://localhost:4000';
+const CURRENT_USER_KEY = 'currentUser';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem(CURRENT_USER_KEY);
+    const savedUser = localStorage.getItem(CURRENT_USER_KEY);
 
-    if (storedUser) {
+    if (savedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        setUser(JSON.parse(savedUser));
       } catch {
         localStorage.removeItem(CURRENT_USER_KEY);
       }
@@ -33,10 +64,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = async (
+  const signup = async (
+    name: string,
     email: string,
-    password: string
-  ): Promise<{ success: boolean; error?: string }> => {
+    password: string,
+    passwordConfirm: string,
+    avatarFile?: File | null
+  ) => {
+    try {
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('email', email);
+      formData.append('password', password);
+      formData.append('passwordConfirm', passwordConfirm);
+
+      if (avatarFile) {
+        formData.append('avatar', avatarFile);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        return {
+          success: false,
+          error: data.message || 'Failed to create account',
+        };
+      }
+
+      setUser(data.user);
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(data.user));
+
+      return { success: true };
+    } catch {
+      return {
+        success: false,
+        error: 'Server error. Please try again.',
+      };
+    }
+  };
+
+  const login = async (email: string, password: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/signin`, {
         method: 'POST',
@@ -55,65 +127,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      const signedInUser: User = {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.name,
-        role: data.user.role,
-        createdAt: data.user.createdAt || new Date().toISOString(),
-      };
-
-      setUser(signedInUser);
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(signedInUser));
+      setUser(data.user);
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(data.user));
 
       return { success: true };
     } catch {
       return {
         success: false,
-        error: 'Could not connect to the server.',
-      };
-    }
-  };
-
-  const signup = async (
-    name: string,
-    email: string,
-    password: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        return {
-          success: false,
-          error: data.message || 'Failed to create account',
-        };
-      }
-
-      const newUser: User = {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.name,
-        role: data.user.role,
-        createdAt: data.user.createdAt || new Date().toISOString(),
-      };
-
-      setUser(newUser);
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
-
-      return { success: true };
-    } catch {
-      return {
-        success: false,
-        error: 'Could not connect to the server.',
+        error: 'Server error. Please try again.',
       };
     }
   };
@@ -123,16 +144,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(CURRENT_USER_KEY);
   };
 
-  const updateProfile = (updates: Partial<User>) => {
-    if (!user) return;
+  const updateProfile = async (data: UpdateProfileData) => {
+    try {
+      if (!user) {
+        return { success: false, error: 'You must be signed in' };
+      }
 
-    const updatedUser = { ...user, ...updates };
-    setUser(updatedUser);
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+      const formData = new FormData();
+      formData.append('name', data.name);
+      formData.append('bio', data.bio);
+
+      if (data.avatarFile) {
+        formData.append('avatar', data.avatarFile);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/profile/${user.id}`, {
+        method: 'PUT',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        return {
+          success: false,
+          error: result.message || 'Failed to update profile',
+        };
+      }
+
+      setUser(result.user);
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(result.user));
+
+      return { success: true };
+    } catch {
+      return {
+        success: false,
+        error: 'Server error. Please try again.',
+      };
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, updateProfile, isLoading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        signup,
+        login,
+        logout,
+        updateProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -141,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
 
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
 
