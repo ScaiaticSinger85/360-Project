@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { SAMPLE_EVENTS } from '../data/sampleEvents';
 
 type EventType = {
   id: string;
@@ -95,7 +96,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setEvents(data.events || []);
     } catch (error) {
       console.error('Failed to fetch events:', error);
-      setEvents([]);
+      setEvents(SAMPLE_EVENTS as unknown as EventType[]);
     }
   };
 

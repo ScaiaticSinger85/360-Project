@@ -43,6 +43,9 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Set to true when running without the backend server
+const OFFLINE_MODE = false;
+
 const API_BASE_URL = 'http://localhost:4000';
 const CURRENT_USER_KEY = 'currentUser';
 
@@ -71,6 +74,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     passwordConfirm: string,
     avatarFile?: File | null
   ) => {
+    if (OFFLINE_MODE) {
+      if (!name || !email || !password || !passwordConfirm) {
+        return { success: false, error: 'Please fill in all fields.' };
+      }
+      if (password !== passwordConfirm) {
+        return { success: false, error: 'Passwords do not match.' };
+      }
+      const newUser = {
+        id: `local_${Date.now()}`,
+        name,
+        email,
+        role: 'registered',
+        bio: '',
+        avatarUrl: '',
+        createdAt: new Date().toISOString(),
+        rsvpEventIds: [],
+      };
+      setUser(newUser);
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
+      return { success: true };
+    }
+
     try {
       const formData = new FormData();
       formData.append('name', name);
@@ -109,6 +134,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
+    if (OFFLINE_MODE) {
+      if (!email || !password) {
+        return { success: false, error: 'Please fill in all fields.' };
+      }
+      // Demo admin account
+      if (email === 'admin@kelowna.com' && password === 'admin123') {
+        const adminUser = {
+          id: 'local_admin',
+          name: 'Admin User',
+          email: 'admin@kelowna.com',
+          role: 'admin',
+          bio: '',
+          avatarUrl: '',
+          createdAt: new Date().toISOString(),
+          rsvpEventIds: [],
+        };
+        setUser(adminUser);
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(adminUser));
+        return { success: true };
+      }
+      // Any other email/password combo works as a regular user
+      const localUser = {
+        id: `local_${Date.now()}`,
+        name: email.split('@')[0],
+        email,
+        role: 'registered',
+        bio: '',
+        avatarUrl: '',
+        createdAt: new Date().toISOString(),
+        rsvpEventIds: [],
+      };
+      setUser(localUser);
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(localUser));
+      return { success: true };
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/signin`, {
         method: 'POST',

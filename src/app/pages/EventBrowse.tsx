@@ -196,9 +196,12 @@ export default function EventBrowse() {
                 <Card className="hover:shadow-lg transition-shadow h-full">
                   <div className="aspect-video overflow-hidden bg-gray-100">
                     <img
-                      src={event.imageUrl || 'https://via.placeholder.com/800x450?text=Event+Image'}
+                      src={event.imageUrl || 'https://placehold.co/800x450?text=Event+Image'}
                       alt={event.title}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://placehold.co/800x450?text=Event+Image';
+                      }}
                     />
                   </div>
 

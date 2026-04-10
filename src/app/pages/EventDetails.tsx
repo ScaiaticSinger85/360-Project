@@ -208,9 +208,12 @@ export default function EventDetails() {
 
         <div className="aspect-video w-full overflow-hidden rounded-lg mb-8 bg-gray-100">
           <img
-            src={event.imageUrl || 'https://via.placeholder.com/1200x675?text=Event+Image'}
+            src={event.imageUrl || 'https://placehold.co/1200x675?text=Event+Image'}
             alt={event.title}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://placehold.co/1200x675?text=Event+Image';
+            }}
           />
         </div>
 

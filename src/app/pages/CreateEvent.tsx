@@ -146,7 +146,7 @@ export default function CreateEvent() {
         address: formData.address.trim(),
         capacity: parseInt(formData.capacity),
         imageUrl: formData.imageUrl.trim(),
-        organizerName: user.name,
+        organizer: user.name,
         organizerId: user.id,
         isPublic: formData.isPublic,
       });
