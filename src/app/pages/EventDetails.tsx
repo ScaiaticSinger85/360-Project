@@ -16,9 +16,20 @@ import {
   Edit,
   Trash2,
   Star,
+  MessageSquare,
+  Trash,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+
+type Comment = {
+  id: string;
+  eventId: string;
+  userId: string;
+  userName: string;
+  text: string;
+  createdAt: string;
+};
 
 type ReviewType = {
   id: string;
@@ -51,16 +62,70 @@ export default function EventDetails() {
   const [reviews, setReviews] = useState<ReviewType[]>([]);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
 
   useEffect(() => {
     if (eventId) {
       setReviews(getEventReviews(eventId));
+      fetchComments(eventId);
     }
 
     if (eventId && user) {
       setIsRsvped(getRSVP(eventId));
     }
   }, [eventId, user, events]);
+
+  const fetchComments = async (eid: string) => {
+    try {
+      const res = await fetch(`/api/events/${eid}/comments`);
+      const data = await res.json();
+      if (data.success) setComments(data.comments);
+    } catch {
+      // server offline — silently ignore
+    }
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) { toast.error('Please sign in to comment'); return; }
+    if (!newComment.trim()) { toast.error('Comment cannot be empty'); return; }
+
+    setIsPostingComment(true);
+    try {
+      const res = await fetch(`/api/events/${eventId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, userName: user.name, text: newComment.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setComments((prev) => [data.comment, ...prev]);
+        setNewComment('');
+        toast.success('Comment posted');
+      } else {
+        toast.error(data.message || 'Failed to post comment');
+      }
+    } catch {
+      toast.error('Server offline — cannot post comments right now');
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const res = await fetch(`/api/events/${eventId}/comments/${commentId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setComments((prev) => prev.filter((c) => c.id !== commentId));
+        toast.success('Comment deleted');
+      }
+    } catch {
+      toast.error('Failed to delete comment');
+    }
+  };
 
   if (!event) {
     return (
@@ -210,7 +275,7 @@ export default function EventDetails() {
                 {user && isRsvped && (
                   <>
                     <div className="my-6 border-t" />
-                    <form onSubmit={handleReview} className="space-y-4">
+                    <form onSubmit={handleReview} className="space-y-4" id="review-form">
                       <div>
                         <Label>Your Rating</Label>
                         <div className="flex gap-2 mt-2">
@@ -248,6 +313,67 @@ export default function EventDetails() {
                       <Button type="submit">Submit Review</Button>
                     </form>
                   </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+            {/* Comments Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Discussion ({comments.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {user ? (
+                  <form onSubmit={handleAddComment} className="mb-6 space-y-3">
+                    <Textarea
+                      placeholder="Join the discussion..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      rows={3}
+                    />
+                    <Button type="submit" disabled={isPostingComment}>
+                      {isPostingComment ? 'Posting...' : 'Post Comment'}
+                    </Button>
+                  </form>
+                ) : (
+                  <p className="text-sm text-gray-500 mb-4">
+                    <Link to="/sign-in" className="text-blue-600 font-medium">Sign in</Link> to join the discussion.
+                  </p>
+                )}
+
+                {comments.length > 0 ? (
+                  <div className="space-y-4">
+                    {comments.map((c) => (
+                      <div key={c.id} className="flex items-start gap-3 border-b pb-4 last:border-b-0">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-semibold text-sm">{c.userName}</span>
+                            <span className="text-xs text-gray-500">
+                              {format(new Date(c.createdAt), 'MMM d, yyyy')}
+                            </span>
+                          </div>
+                          <p className="text-gray-700 text-sm">{c.text}</p>
+                        </div>
+                        {user && (user.id === c.userId || user.role === 'admin') && (
+                          <button
+                            onClick={() => handleDeleteComment(c.id)}
+                            className="text-gray-400 hover:text-red-500 mt-1"
+                            title="Delete comment"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-4 text-sm">
+                    No comments yet. Start the discussion!
+                  </p>
                 )}
               </CardContent>
             </Card>

@@ -14,44 +14,53 @@ export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatar, setAvatar] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
   const { signup } = useAuth();
   const navigate = useNavigate();
 
-  const validateForm = (): boolean => {
-    if (!name || !email || !password || !confirmPassword) {
-      setError('Please fill in all required fields');
-      return false;
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.type)) {
+      setError('Only image files are allowed (jpg, png, webp, gif)');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be under 5MB');
+      return;
     }
 
+    setAvatar(file);
+    setAvatarPreview(URL.createObjectURL(file));
+    setError('');
+  };
+
+  const validateForm = (): boolean => {
+    if (!name || !email || !password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return false;
+    }
     if (name.length < 2) {
       setError('Name must be at least 2 characters');
       return false;
     }
-
     if (!email.includes('@') || !email.includes('.')) {
       setError('Please enter a valid email address');
       return false;
     }
-
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return false;
     }
-
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return false;
     }
-
-    if (avatarFile && !avatarFile.type.startsWith('image/')) {
-      setError('Please upload a valid image file');
-      return false;
-    }
-
     return true;
   };
 
@@ -59,19 +68,11 @@ export default function SignUp() {
     e.preventDefault();
     setError('');
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
 
-    const result = await signup(
-      name,
-      email,
-      password,
-      confirmPassword,
-      avatarFile
-    );
+    const result = await signup(name, email, password, confirmPassword, avatar ?? undefined);
 
     setIsLoading(false);
 
@@ -102,7 +103,6 @@ export default function SignUp() {
               Create an account to start organizing and attending events
             </CardDescription>
           </CardHeader>
-
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
@@ -137,19 +137,6 @@ export default function SignUp() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="avatar">Profile Image</Label>
-                <Input
-                  id="avatar"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-                />
-                <p className="text-xs text-gray-500">
-                  Optional. JPG, PNG, WEBP, or GIF up to 5MB
-                </p>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
@@ -172,6 +159,24 @@ export default function SignUp() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="avatar">Profile Picture</Label>
+                {avatarPreview && (
+                  <img
+                    src={avatarPreview}
+                    alt="Preview"
+                    className="w-20 h-20 rounded-full object-cover mb-2"
+                  />
+                )}
+                <Input
+                  id="avatar"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                  onChange={handleAvatarChange}
+                />
+                <p className="text-xs text-gray-500">Optional. jpg, png, webp, gif — max 5MB</p>
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>

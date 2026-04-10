@@ -1,321 +1,273 @@
-const bcrypt = require('bcryptjs');
 const { ObjectId } = require('mongodb');
 const { getCollections } = require('../config/db');
 
+function sanitize(value) {
+  return String(value || '').trim().replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function fileToBase64(file) {
   if (!file) return '';
-
   const base64 = file.buffer.toString('base64');
   return `data:${file.mimetype};base64,${base64}`;
 }
 
-function avatarToDisplayString(avatar) {
-  if (!avatar) return '';
-
-  if (typeof avatar === 'string') {
-    return avatar;
-  }
-
-  if (avatar.data && avatar.contentType) {
+function imageToDisplayString(image) {
+  if (!image) return '';
+  if (typeof image === 'string') return image;
+  if (image.data && image.contentType) {
     let base64String = '';
-
-    if (Buffer.isBuffer(avatar.data)) {
-      base64String = avatar.data.toString('base64');
-    } else if (avatar.data.buffer) {
-      base64String = Buffer.from(avatar.data.buffer).toString('base64');
-    } else if (avatar.data.base64) {
-      base64String = avatar.data.base64;
+    if (Buffer.isBuffer(image.data)) {
+      base64String = image.data.toString('base64');
+    } else if (image.data.buffer) {
+      base64String = Buffer.from(image.data.buffer).toString('base64');
+    } else if (image.data.base64) {
+      base64String = image.data.base64;
     }
-
-    if (base64String) {
-      return `data:${avatar.contentType};base64,${base64String}`;
-    }
+    if (base64String) return `data:${image.contentType};base64,${base64String}`;
   }
-
   return '';
 }
 
-function formatUser(user) {
+function formatEvent(event) {
   return {
-    id: user._id.toString(),
-    name: user.name || '',
-    email: user.email || '',
-    role: user.role || 'user',
-    bio: user.bio || '',
-    createdAt: user.createdAt || new Date().toISOString(),
-    avatarUrl: avatarToDisplayString(user.avatar),
-    rsvpEventIds: user.rsvpEventIds || [],
+    id: event._id.toString(),
+    title: event.title || '',
+    description: event.description || '',
+    category: event.category || '',
+    date: event.date || '',
+    time: event.time || '',
+    location: event.location || '',
+    address: event.address || '',
+    capacity: event.capacity || 0,
+    imageUrl: imageToDisplayString(event.imageUrl),
+    organizer: event.organizer || '',
+    organizerId: event.organizerId || '',
+    isPublic: event.isPublic !== undefined ? event.isPublic : true,
+    attendees: event.attendees || 0,
+    rsvpUserIds: event.rsvpUserIds || [],
+    createdAt: event.createdAt || '',
   };
 }
 
-async function signup(req, res) {
+async function createEvent(req, res) {
   try {
-    const { usersCollection } = getCollections();
+    const { eventsCollection } = getCollections();
     const data = req.body || {};
 
-    const name = String(data.name || '').trim();
-    const email = String(data.email || '').trim().toLowerCase();
-    const password = String(data.password || '').trim();
-    const passwordConfirm = String(data.passwordConfirm || '').trim();
+    const title = sanitize(data.title);
+    const description = sanitize(data.description);
+    const category = sanitize(data.category);
+    const date = sanitize(data.date);
+    const time = sanitize(data.time);
+    const location = sanitize(data.location);
+    const address = sanitize(data.address);
+    const organizer = sanitize(data.organizer);
+    const organizerId = sanitize(data.organizerId);
+    const capacity = parseInt(data.capacity, 10);
+    const isPublic = data.isPublic === 'true' || data.isPublic === true;
 
-    if (!name || !email || !password || !passwordConfirm) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please fill in all fields.',
-      });
+    if (!title || !description || !category || !date || !time || !location || !address || !organizer || !organizerId) {
+      return res.status(400).json({ success: false, message: 'Missing required fields.' });
     }
 
-    if (name.length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name must be at least 2 characters.',
-      });
+    if (isNaN(capacity) || capacity <= 0) {
+      return res.status(400).json({ success: false, message: 'Capacity must be a positive number.' });
     }
 
-    if (!email.includes('@') || !email.includes('.')) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please enter a valid email address.',
-      });
-    }
+    const imageUrl = req.file ? fileToBase64(req.file) : sanitize(data.imageUrl);
 
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 6 characters.',
-      });
-    }
-
-    if (password !== passwordConfirm) {
-      return res.status(400).json({
-        success: false,
-        message: 'Passwords do not match.',
-      });
-    }
-
-    const existingUser = await usersCollection.findOne({ email });
-
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'An account with this email already exists.',
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = {
-      name,
-      email,
-      password: hashedPassword,
-      role: 'user',
-      bio: '',
+    const event = {
+      title,
+      description,
+      category,
+      date,
+      time,
+      location,
+      address,
+      capacity,
+      imageUrl,
+      organizer,
+      organizerId,
+      isPublic,
+      attendees: 0,
+      rsvpUserIds: [],
       createdAt: new Date().toISOString(),
-      avatar: req.file ? fileToBase64(req.file) : '',
-      rsvpEventIds: [],
     };
 
-    const result = await usersCollection.insertOne(user);
-    const savedUser = await usersCollection.findOne({ _id: result.insertedId });
+    const result = await eventsCollection.insertOne(event);
+    const saved = await eventsCollection.findOne({ _id: result.insertedId });
 
-    return res.status(201).json({
-      success: true,
-      message: 'Account created successfully.',
-      user: formatUser(savedUser),
-    });
+    return res.status(201).json({ success: true, message: 'Event created.', event: formatEvent(saved) });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: `Server error: ${error.message}`,
-    });
+    return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
 }
 
-async function signin(req, res) {
+async function getAllEvents(_req, res) {
   try {
-    const { usersCollection } = getCollections();
-    const data = req.body || {};
-
-    const email = String(data.email || '').trim().toLowerCase();
-    const password = String(data.password || '').trim();
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please fill in all fields.',
-      });
-    }
-
-    const user = await usersCollection.findOne({ email });
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'No account found with that email.',
-      });
-    }
-
-    const passwordMatches = await bcrypt.compare(password, user.password);
-
-    if (!passwordMatches) {
-      return res.status(401).json({
-        success: false,
-        message: 'Incorrect password.',
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: 'Signed in successfully.',
-      user: formatUser(user),
-    });
+    const { eventsCollection } = getCollections();
+    const events = await eventsCollection.find().sort({ createdAt: -1 }).toArray();
+    return res.status(200).json({ success: true, events: events.map(formatEvent) });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: `Server error: ${error.message}`,
-    });
+    return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
 }
 
-async function updateProfile(req, res) {
+async function getEventsByOrganizerId(req, res) {
   try {
-    const { usersCollection } = getCollections();
-    const { userId } = req.params;
-    const data = req.body || {};
+    const { eventsCollection } = getCollections();
+    const { organizerId } = req.params;
+    const events = await eventsCollection.find({ organizerId }).sort({ createdAt: -1 }).toArray();
+    return res.status(200).json({ success: true, events: events.map(formatEvent) });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
+  }
+}
 
-    if (!ObjectId.isValid(userId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid user ID.',
-      });
+async function getEventById(req, res) {
+  try {
+    const { eventsCollection } = getCollections();
+    const { eventId } = req.params;
+
+    if (!ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, message: 'Invalid event ID.' });
     }
 
-    const existingUser = await usersCollection.findOne({
-      _id: new ObjectId(userId),
-    });
+    const event = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
 
-    if (!existingUser) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found.',
-      });
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found.' });
+    }
+
+    return res.status(200).json({ success: true, event: formatEvent(event) });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
+  }
+}
+
+async function updateEvent(req, res) {
+  try {
+    const { eventsCollection } = getCollections();
+    const { eventId } = req.params;
+    const data = req.body || {};
+
+    if (!ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, message: 'Invalid event ID.' });
+    }
+
+    const existing = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
     const updateData = {};
 
-    if (data.name !== undefined) {
-      const name = String(data.name || '').trim();
+    if (data.title !== undefined) updateData.title = sanitize(data.title);
+    if (data.description !== undefined) updateData.description = sanitize(data.description);
+    if (data.category !== undefined) updateData.category = sanitize(data.category);
+    if (data.date !== undefined) updateData.date = sanitize(data.date);
+    if (data.time !== undefined) updateData.time = sanitize(data.time);
+    if (data.location !== undefined) updateData.location = sanitize(data.location);
+    if (data.address !== undefined) updateData.address = sanitize(data.address);
+    if (data.capacity !== undefined) updateData.capacity = parseInt(data.capacity, 10);
+    if (data.isPublic !== undefined) updateData.isPublic = data.isPublic === 'true' || data.isPublic === true;
+    if (req.file) updateData.imageUrl = fileToBase64(req.file);
+    else if (data.imageUrl !== undefined) updateData.imageUrl = sanitize(data.imageUrl);
 
-      if (!name) {
-        return res.status(400).json({
-          success: false,
-          message: 'Name is required.',
-        });
-      }
+    await eventsCollection.updateOne({ _id: new ObjectId(eventId) }, { $set: updateData });
+    const updated = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
 
-      if (name.length < 2) {
-        return res.status(400).json({
-          success: false,
-          message: 'Name must be at least 2 characters.',
-        });
-      }
-
-      updateData.name = name;
-    }
-
-    if (data.bio !== undefined) {
-      updateData.bio = String(data.bio || '').trim();
-    }
-
-    if (req.file) {
-      updateData.avatar = fileToBase64(req.file);
-    }
-
-    await usersCollection.updateOne(
-      { _id: new ObjectId(userId) },
-      { $set: updateData }
-    );
-
-    const updatedUser = await usersCollection.findOne({
-      _id: new ObjectId(userId),
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Profile updated successfully.',
-      user: formatUser(updatedUser),
-    });
+    return res.status(200).json({ success: true, message: 'Event updated.', event: formatEvent(updated) });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: `Server error: ${error.message}`,
-    });
+    return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
 }
 
-async function getUserRsvpEvents(req, res) {
+async function deleteEvent(req, res) {
   try {
-    const { usersCollection, eventsCollection } = getCollections();
-    const { userId } = req.params;
+    const { eventsCollection } = getCollections();
+    const { eventId } = req.params;
 
-    if (!ObjectId.isValid(userId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid user ID.',
-      });
+    if (!ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, message: 'Invalid event ID.' });
     }
 
-    const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+    const result = await eventsCollection.deleteOne({ _id: new ObjectId(eventId) });
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found.',
-      });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
-    const rsvpEventIds = user.rsvpEventIds || [];
-    const validObjectIds = rsvpEventIds
-      .filter((id) => ObjectId.isValid(id))
-      .map((id) => new ObjectId(id));
-
-    const events = await eventsCollection.find({
-      _id: { $in: validObjectIds },
-    }).toArray();
-
-    const formattedEvents = events.map((event) => ({
-      id: event._id.toString(),
-      title: event.title || '',
-      description: event.description || '',
-      category: event.category || '',
-      date: event.date || '',
-      time: event.time || '',
-      location: event.location || '',
-      address: event.address || '',
-      capacity: event.capacity || 0,
-      imageUrl: event.imageUrl || '',
-      organizer: event.organizer || '',
-      organizerId: event.organizerId || '',
-      isPublic: event.isPublic || false,
-      attendees: event.attendees || 0,
-      rsvpUserIds: event.rsvpUserIds || [],
-    }));
-
-    return res.status(200).json({
-      success: true,
-      events: formattedEvents,
-    });
+    return res.status(200).json({ success: true, message: 'Event deleted.' });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: `Server error: ${error.message}`,
-    });
+    return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
+  }
+}
+
+async function toggleEventRsvp(req, res) {
+  try {
+    const { eventsCollection, usersCollection } = getCollections();
+    const { eventId } = req.params;
+    const { userId } = req.body;
+
+    if (!ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, message: 'Invalid event ID.' });
+    }
+
+    const event = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found.' });
+    }
+
+    const rsvpUserIds = event.rsvpUserIds || [];
+    const alreadyRsvpd = rsvpUserIds.includes(userId);
+
+    let updatedRsvpIds;
+    let attendeesDelta;
+
+    if (alreadyRsvpd) {
+      updatedRsvpIds = rsvpUserIds.filter((id) => id !== userId);
+      attendeesDelta = -1;
+    } else {
+      if (event.attendees >= event.capacity) {
+        return res.status(400).json({ success: false, message: 'Event is full.' });
+      }
+      updatedRsvpIds = [...rsvpUserIds, userId];
+      attendeesDelta = 1;
+    }
+
+    await eventsCollection.updateOne(
+      { _id: new ObjectId(eventId) },
+      { $set: { rsvpUserIds: updatedRsvpIds, attendees: (event.attendees || 0) + attendeesDelta } }
+    );
+
+    if (ObjectId.isValid(userId)) {
+      if (alreadyRsvpd) {
+        await usersCollection.updateOne(
+          { _id: new ObjectId(userId) },
+          { $pull: { rsvpEventIds: eventId } }
+        );
+      } else {
+        await usersCollection.updateOne(
+          { _id: new ObjectId(userId) },
+          { $addToSet: { rsvpEventIds: eventId } }
+        );
+      }
+    }
+
+    const updated = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    return res.status(200).json({ success: true, rsvpd: !alreadyRsvpd, event: formatEvent(updated) });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
 }
 
 module.exports = {
-  signup,
-  signin,
-  updateProfile,
-  getUserRsvpEvents,
+  createEvent,
+  getAllEvents,
+  getEventsByOrganizerId,
+  getEventById,
+  updateEvent,
+  deleteEvent,
+  toggleEventRsvp,
 };

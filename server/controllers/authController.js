@@ -175,6 +175,13 @@ async function signin(req, res) {
       });
     }
 
+    if (user.isDisabled) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been disabled. Please contact an admin.',
+      });
+    }
+
     const passwordMatches = await bcrypt.compare(password, user.password);
 
     if (!passwordMatches) {

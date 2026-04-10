@@ -34,6 +34,7 @@ function getCollections() {
   return {
     usersCollection: database.collection('users'),
     eventsCollection: database.collection('events'),
+    commentsCollection: database.collection('comments'),
   };
 }
 
