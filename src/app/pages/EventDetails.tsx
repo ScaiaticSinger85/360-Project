@@ -316,7 +316,6 @@ export default function EventDetails() {
                 )}
               </CardContent>
             </Card>
-          </div>
 
             {/* Comments Section */}
             <Card>
@@ -379,7 +378,7 @@ export default function EventDetails() {
             </Card>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 lg:col-span-1">
             <Card>
               <CardHeader>
                 <CardTitle>Event Details</CardTitle>
