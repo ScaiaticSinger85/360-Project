@@ -69,6 +69,7 @@ export default function EventDetails() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isPostingComment, setIsPostingComment] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   useEffect(() => {
     if (eventId) {
@@ -247,7 +248,24 @@ export default function EventDetails() {
                 <CardTitle>About This Event</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 whitespace-pre-wrap">{event.description}</p>
+                {(() => {
+                  const LIMIT = 300;
+                  const long = event.description.length > LIMIT;
+                  const shown = long && !descExpanded ? event.description.slice(0, LIMIT) + '…' : event.description;
+                  return (
+                    <>
+                      <p className="text-gray-700 whitespace-pre-wrap">{shown}</p>
+                      {long && (
+                        <button
+                          onClick={() => setDescExpanded((v) => !v)}
+                          className="mt-2 text-blue-600 text-sm font-medium hover:underline focus:outline-none"
+                        >
+                          {descExpanded ? 'Show less' : 'Read more'}
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
               </CardContent>
             </Card>
 

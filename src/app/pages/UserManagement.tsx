@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { ArrowLeft, Search, Shield, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Search, Shield, User as UserIcon, Users } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -129,25 +129,35 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Link to="/admin">
-          <Button variant="ghost" className="mb-6 gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Button>
-        </Link>
+    <div className="min-h-screen bg-gray-50">
+      {/* Banner */}
+      <div className="bg-gradient-to-r from-gray-900 to-gray-700 py-10 px-4 sm:px-6 lg:px-8 text-white">
+        <div className="max-w-7xl mx-auto">
+          <Link to="/admin">
+            <Button variant="ghost" className="mb-4 gap-2 text-white hover:text-white hover:bg-white/20 -ml-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Dashboard
+            </Button>
+          </Link>
+          <div className="flex items-center gap-4">
+            <div className="bg-white/10 rounded-xl p-3">
+              <Users className="h-8 w-8" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">User Management</h1>
+              <p className="text-gray-300 mt-1">Manage accounts, roles, and permissions</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-3xl">User Management</CardTitle>
-                <p className="text-gray-600 mt-2">Manage user accounts and permissions</p>
-              </div>
-              <div className="text-right">
-                <p className="text-3xl font-bold text-blue-600">{users.length}</p>
-                <p className="text-sm text-gray-600">Total Users</p>
+                <CardTitle className="text-xl">All Users</CardTitle>
+                <p className="text-gray-500 text-sm mt-1">{users.length} registered accounts</p>
               </div>
             </div>
           </CardHeader>
@@ -245,37 +255,43 @@ export default function UserManagement() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="bg-red-50 border-0">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Admin Users</p>
                   <p className="text-3xl font-bold">{users.filter((u) => u.role === 'admin').length}</p>
                 </div>
-                <Shield className="h-10 w-10 text-red-600" />
+                <div className="bg-red-600 rounded-xl p-3">
+                  <Shield className="h-6 w-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-blue-50 border-0">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Active Users</p>
                   <p className="text-3xl font-bold">{users.filter((u) => !u.isDisabled).length}</p>
                 </div>
-                <UserIcon className="h-10 w-10 text-blue-600" />
+                <div className="bg-blue-600 rounded-xl p-3">
+                  <UserIcon className="h-6 w-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-gray-100 border-0">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Disabled Users</p>
                   <p className="text-3xl font-bold">{users.filter((u) => u.isDisabled).length}</p>
                 </div>
-                <UserIcon className="h-10 w-10 text-gray-400" />
+                <div className="bg-gray-500 rounded-xl p-3">
+                  <UserIcon className="h-6 w-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>

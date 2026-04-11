@@ -18,15 +18,6 @@ const CATEGORIES = [
   'Arts & Culture',
   'Technology',
   'Community',
-  'Networking',
-  'Business',
-  'Art',
-  'Sports',
-  'Health',
-  'Party',
-  'Education',
-  'Social',
-  'Tech',
 ];
 
 const DATE_FILTERS = [
@@ -61,6 +52,87 @@ type EventType = {
   isPublic: boolean;
   attendees: number;
 };
+
+const DESC_LIMIT = 120;
+
+function EventCard({ event }: { event: EventType }) {
+  const [expanded, setExpanded] = useState(false);
+  const long = event.description.length > DESC_LIMIT;
+  const shown = long && !expanded ? event.description.slice(0, DESC_LIMIT) + '…' : event.description;
+
+  return (
+    <Card className="hover:shadow-lg transition-shadow h-full">
+      <div className="aspect-video overflow-hidden bg-gray-100 relative group">
+        <img
+          src={event.imageUrl || getCategoryImage(event.category)}
+          alt={event.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          onError={(e) => {
+            const img = e.target as HTMLImageElement;
+            img.onerror = null;
+            img.src = getCategoryImage(event.category);
+          }}
+        />
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+          <span className="text-white font-semibold text-sm bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">
+            View Details →
+          </span>
+        </div>
+        <span className="absolute top-3 left-3 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
+          {event.category}
+        </span>
+      </div>
+
+      <CardContent className="p-6">
+        <h3 className="text-xl font-bold mb-3 line-clamp-2">{event.title}</h3>
+
+        <div className="mb-4">
+          <p className="text-sm text-gray-600">{shown}</p>
+          {long && (
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpanded((v) => !v); }}
+              className="text-blue-600 text-xs font-medium hover:underline focus:outline-none mt-1"
+            >
+              {expanded ? 'Show less' : 'Read more'}
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 flex-shrink-0" />
+            <span>{format(new Date(event.date), 'EEEE, MMMM d, yyyy')}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 flex-shrink-0" />
+            <span className="line-clamp-1">{event.location}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 flex-shrink-0" />
+            <span>{event.attendees} / {event.capacity} attending</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-1.5">
+            <div
+              className={`h-1.5 rounded-full ${event.attendees >= event.capacity ? 'bg-red-500' : 'bg-blue-500'}`}
+              style={{ width: `${Math.min(100, (event.attendees / event.capacity) * 100)}%` }}
+            />
+          </div>
+
+          <div className="pt-1 text-sm">
+            <span className="font-medium text-gray-700">Organizer: </span>
+            <span className="text-gray-600">{event.organizer}</span>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <Button className="w-full">View Details</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function EventCardSkeleton() {
   return (
@@ -294,68 +366,7 @@ export default function EventBrowse() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedEvents.map((event) => (
                 <Link key={event.id} to={`/events/${event.id}`}>
-                  <Card className="hover:shadow-lg transition-shadow h-full">
-                    <div className="aspect-video overflow-hidden bg-gray-100 relative group">
-                      <img
-                        src={event.imageUrl || getCategoryImage(event.category)}
-                        alt={event.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => {
-                          const img = e.target as HTMLImageElement;
-                          img.onerror = null;
-                          img.src = getCategoryImage(event.category);
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                        <span className="text-white font-semibold text-sm bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">
-                          View Details →
-                        </span>
-                      </div>
-                      <span className="absolute top-3 left-3 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                        {event.category}
-                      </span>
-                    </div>
-
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-3 line-clamp-2">{event.title}</h3>
-
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                        {event.description}
-                      </p>
-
-                      <div className="space-y-2 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 flex-shrink-0" />
-                          <span>{format(new Date(event.date), 'EEEE, MMMM d, yyyy')}</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 flex-shrink-0" />
-                          <span className="line-clamp-1">{event.location}</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 flex-shrink-0" />
-                          <span>{event.attendees} / {event.capacity} attending</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5">
-                          <div
-                            className={`h-1.5 rounded-full ${event.attendees >= event.capacity ? 'bg-red-500' : 'bg-blue-500'}`}
-                            style={{ width: `${Math.min(100, (event.attendees / event.capacity) * 100)}%` }}
-                          />
-                        </div>
-
-                        <div className="pt-1 text-sm">
-                          <span className="font-medium text-gray-700">Organizer: </span>
-                          <span className="text-gray-600">{event.organizer}</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-4">
-                        <Button className="w-full">View Details</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <EventCard event={event} />
                 </Link>
               ))}
             </div>
