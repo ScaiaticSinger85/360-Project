@@ -28,14 +28,26 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative text-white py-40">
+        <div className="absolute inset-0 overflow-hidden">
+          <img
+            src="https://images.unsplash.com/photo-1578945761766-a4bc916e0dc7?w=1600&q=80"
+            alt="Kelowna"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+              (e.target as HTMLImageElement).parentElement!.style.background = 'linear-gradient(to right, #2563eb, #4338ca)';
+            }}
+          />
+          <div className="absolute inset-0 bg-black/55" />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-5xl font-bold mb-6">
               Discover Events in Kelowna
             </h1>
-            <p className="text-xl mb-8 text-blue-100 max-w-2xl mx-auto">
-              Join your local community in amazing experiences. Find events, connect with neighbors, 
+            <p className="text-xl mb-8 text-gray-200 max-w-2xl mx-auto">
+              Join your local community in amazing experiences. Find events, connect with neighbors,
               and make memories in beautiful Kelowna.
             </p>
             <div className="flex justify-center gap-4">
@@ -47,13 +59,13 @@ export default function Home() {
               </Link>
               {user && user.role !== 'unregistered' ? (
                 <Link to="/create-event">
-                  <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10">
+                  <Button size="lg" variant="outline" className="text-white border-white bg-white/10 hover:bg-white/20">
                     Create Event
                   </Button>
                 </Link>
               ) : (
                 <Link to="/sign-up">
-                  <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10">
+                  <Button size="lg" variant="outline" className="text-white border-white bg-white/10 hover:bg-white/20">
                     Sign Up Free
                   </Button>
                 </Link>

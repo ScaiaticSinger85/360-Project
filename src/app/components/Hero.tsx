@@ -4,14 +4,19 @@ import { Input } from './ui/input';
 
 export function Hero() {
   return (
-    <section className="relative pt-16 bg-gradient-to-br from-blue-600 to-purple-700 text-white">
-      {/* Background Image Overlay */}
+    <section className="relative pt-16 text-white">
+      {/* Background Image */}
       <div className="absolute inset-0 overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1763506392032-e00f33e0d5b8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxLZWxvd25hJTIwQ2FuYWRhJTIwY2l0eXNjYXBlJTIwbGFrZXxlbnwxfHx8fDE3NzA2MTYxNzN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-          alt="Kelowna"
-          className="w-full h-full object-cover opacity-20"
+          src="https://images.unsplash.com/photo-1578945761766-a4bc916e0dc7?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8S2Vsb3duYXxlbnwwfHwwfHx8MA%3D%3D"
+          alt="Kelowna scenic view"
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1600&q=80';
+          }}
         />
+        {/* Dark overlay so text is readable */}
+        <div className="absolute inset-0 bg-black/50" />
       </div>
 
       {/* Content */}
