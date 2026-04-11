@@ -133,16 +133,21 @@ export default function MyRSVPs() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-16">
-            <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No RSVP events yet
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Browse events and RSVP to see them here
+          <div className="text-center py-20">
+            <div className="relative inline-block mb-6">
+              <div className="w-28 h-28 bg-rose-50 rounded-full flex items-center justify-center mx-auto">
+                <Heart className="h-14 w-14 text-rose-300" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-lg">🎉</span>
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">No RSVPs yet</h3>
+            <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+              Discover events in Kelowna and RSVP to save your spot. They'll all appear here.
             </p>
             <Link to="/events">
-              <Button>Browse Events</Button>
+              <Button size="lg" className="gap-2">Browse Events</Button>
             </Link>
           </div>
         )}

@@ -209,7 +209,7 @@ export default function EventDetails() {
           </Button>
         </Link>
 
-        <div className="aspect-video w-full overflow-hidden rounded-lg mb-8 bg-gray-100">
+        <div className="aspect-video w-full overflow-hidden rounded-xl mb-8 bg-gray-100 relative">
           <img
             src={event.imageUrl || getCategoryImage(event.category)}
             alt={event.title}
@@ -218,18 +218,16 @@ export default function EventDetails() {
               (e.target as HTMLImageElement).src = getCategoryImage(event.category);
             }}
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent rounded-xl" />
+          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+            <Badge className="mb-3 bg-white/20 text-white border-white/30 backdrop-blur-sm">{event.category}</Badge>
+            <h1 className="text-4xl font-bold mb-1 drop-shadow-lg">{event.title}</h1>
+            <p className="text-white/80">Organized by <span className="font-semibold text-white">{event.organizer}</span></p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div>
-              <Badge className="mb-3">{event.category}</Badge>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">{event.title}</h1>
-              <p className="text-gray-600">
-                Organized by <span className="font-semibold">{event.organizer}</span>
-              </p>
-            </div>
-
             <Card>
               <CardHeader>
                 <CardTitle>About This Event</CardTitle>
@@ -398,51 +396,57 @@ export default function EventDetails() {
           </div>
 
           <div className="space-y-6 lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Event Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <Card className="overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4">
+                <h3 className="text-white font-semibold text-lg">Event Details</h3>
+              </div>
+              <CardContent className="space-y-4 pt-4">
                 <div className="flex items-start gap-3">
-                  <Calendar className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div className="bg-blue-100 rounded-lg p-2 flex-shrink-0">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                  </div>
                   <div>
-                    <p className="font-semibold">Date</p>
-                    <p className="text-sm text-gray-600">
-                      {format(new Date(event.date), 'EEEE, MMMM d, yyyy')}
-                    </p>
+                    <p className="font-semibold text-sm">Date</p>
+                    <p className="text-sm text-gray-600">{format(new Date(event.date), 'EEEE, MMMM d, yyyy')}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <Clock className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div className="bg-purple-100 rounded-lg p-2 flex-shrink-0">
+                    <Clock className="h-4 w-4 text-purple-600" />
+                  </div>
                   <div>
-                    <p className="font-semibold">Time</p>
+                    <p className="font-semibold text-sm">Time</p>
                     <p className="text-sm text-gray-600">{event.time}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div className="bg-rose-100 rounded-lg p-2 flex-shrink-0">
+                    <MapPin className="h-4 w-4 text-rose-600" />
+                  </div>
                   <div>
-                    <p className="font-semibold">Location</p>
+                    <p className="font-semibold text-sm">Location</p>
                     <p className="text-sm text-gray-600">{event.location}</p>
-                    <p className="text-sm text-gray-500">{event.address}</p>
+                    <p className="text-xs text-gray-500">{event.address}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <Users className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">Capacity</p>
-                    <p className="text-sm text-gray-600">
-                      {event.attendees} / {event.capacity} attending
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {isFull ? (
-                        <span className="text-red-600">Event is full</span>
-                      ) : (
-                        <span>{spotsRemaining} spots remaining</span>
-                      )}
+                  <div className="bg-green-100 rounded-lg p-2 flex-shrink-0">
+                    <Users className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm">Capacity</p>
+                    <p className="text-sm text-gray-600 mb-1">{event.attendees} / {event.capacity} attending</p>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                      <div
+                        className={`h-1.5 rounded-full ${isFull ? 'bg-red-500' : 'bg-green-500'}`}
+                        style={{ width: `${Math.min(100, (event.attendees / event.capacity) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs mt-1 text-gray-500">
+                      {isFull ? <span className="text-red-600 font-medium">Event is full</span> : <span>{spotsRemaining} spots remaining</span>}
                     </p>
                   </div>
                 </div>
@@ -450,19 +454,12 @@ export default function EventDetails() {
             </Card>
 
             {user && !isOrganizer && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>RSVP</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {isRsvped && (
-                    <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                      <p className="text-sm font-semibold text-blue-900">
-                        You have RSVP’d to this event
-                      </p>
-                    </div>
-                  )}
-
+              <Card className="overflow-hidden">
+                <div className={`px-6 py-4 ${isRsvped ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-blue-600 to-indigo-700'}`}>
+                  <h3 className="text-white font-semibold text-lg">{isRsvped ? "You're Going!" : 'Reserve Your Spot'}</h3>
+                  {isRsvped && <p className="text-green-100 text-sm">You have RSVP'd to this event</p>}
+                </div>
+                <CardContent className="space-y-3 pt-4">
                   <Button
                     onClick={handleRSVP}
                     className="w-full"

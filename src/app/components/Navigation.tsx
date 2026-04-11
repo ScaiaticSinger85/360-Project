@@ -22,7 +22,7 @@ export function Navigation() {
   };
 
   return (
-    <nav className="bg-white border-b-2 border-blue-600 sticky top-0 z-50 shadow-sm">
+    <nav className="bg-white/90 backdrop-blur-md border-b-2 border-blue-600 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center space-x-8">

@@ -79,20 +79,33 @@ export default function Home() {
       {/* Stats Section */}
       <section className="py-12 bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold text-blue-600 mb-2">{events.length}</div>
-              <div className="text-gray-600">Active Events</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-blue-600 mb-2">
-                {events.reduce((sum, e) => sum + e.attendees, 0)}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex items-center gap-4 bg-blue-50 rounded-2xl p-6 border border-blue-100">
+              <div className="bg-blue-600 rounded-xl p-3">
+                <Calendar className="h-7 w-7 text-white" />
               </div>
-              <div className="text-gray-600">Total Attendees</div>
+              <div>
+                <div className="text-3xl font-bold text-blue-700">{events.length}</div>
+                <div className="text-gray-600 text-sm font-medium">Active Events</div>
+              </div>
             </div>
-            <div>
-              <div className="text-4xl font-bold text-blue-600 mb-2">{categories.length}</div>
-              <div className="text-gray-600">Event Categories</div>
+            <div className="flex items-center gap-4 bg-purple-50 rounded-2xl p-6 border border-purple-100">
+              <div className="bg-purple-600 rounded-xl p-3">
+                <Users className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-purple-700">{events.reduce((sum, e) => sum + e.attendees, 0)}</div>
+                <div className="text-gray-600 text-sm font-medium">Total Attendees</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 bg-green-50 rounded-2xl p-6 border border-green-100">
+              <div className="bg-green-600 rounded-xl p-3">
+                <Star className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-green-700">{categories.length}</div>
+                <div className="text-gray-600 text-sm font-medium">Event Categories</div>
+              </div>
             </div>
           </div>
         </div>
@@ -136,7 +149,7 @@ export default function Home() {
             {upcomingEvents.map((event) => (
               <Link key={event.id} to={`/events/${event.id}`}>
                 <Card className="hover:shadow-lg transition-shadow h-full">
-                  <div className="aspect-video overflow-hidden">
+                  <div className="aspect-video overflow-hidden relative">
                     <img
                       src={event.imageUrl || getCategoryImage(event.category)}
                       alt={event.title}
@@ -145,6 +158,10 @@ export default function Home() {
                         (e.target as HTMLImageElement).src = getCategoryImage(event.category);
                       }}
                     />
+                    <div className="absolute top-3 right-3 bg-white rounded-lg shadow px-2 py-1 text-center min-w-[48px]">
+                      <p className="text-xs font-bold text-blue-600 uppercase">{format(new Date(event.date), 'MMM')}</p>
+                      <p className="text-lg font-bold text-gray-900 leading-none">{format(new Date(event.date), 'd')}</p>
+                    </div>
                   </div>
                   <CardContent className="p-6">
                     <div className="flex items-center gap-2 text-sm text-blue-600 mb-2">

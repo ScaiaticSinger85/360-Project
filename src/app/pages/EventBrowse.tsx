@@ -195,17 +195,22 @@ export default function EventBrowse() {
             {filteredEvents.map((event) => (
               <Link key={event.id} to={`/events/${event.id}`}>
                 <Card className="hover:shadow-lg transition-shadow h-full">
-                  <div className="aspect-video overflow-hidden bg-gray-100 relative">
+                  <div className="aspect-video overflow-hidden bg-gray-100 relative group">
                     <img
                       src={event.imageUrl || getCategoryImage(event.category)}
                       alt={event.title}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
                         const img = e.target as HTMLImageElement;
                         img.onerror = null;
                         img.src = getCategoryImage(event.category);
                       }}
                     />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">
+                        View Details →
+                      </span>
+                    </div>
                     <span className="absolute top-3 left-3 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
                       {event.category}
                     </span>
@@ -235,9 +240,13 @@ export default function EventBrowse() {
 
                       <div className="flex items-center gap-2">
                         <Users className="h-4 w-4 flex-shrink-0" />
-                        <span>
-                          {event.attendees} / {event.capacity} attending
-                        </span>
+                        <span>{event.attendees} / {event.capacity} attending</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className={`h-1.5 rounded-full ${event.attendees >= event.capacity ? 'bg-red-500' : 'bg-blue-500'}`}
+                          style={{ width: `${Math.min(100, (event.attendees / event.capacity) * 100)}%` }}
+                        />
                       </div>
 
                       <div className="pt-1 text-sm">
