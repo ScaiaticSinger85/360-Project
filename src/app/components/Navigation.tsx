@@ -1,11 +1,12 @@
+import React from 'react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
   Calendar,
   LayoutDashboard,
   LogOut,
-  User,
   CalendarPlus,
   Heart,
   Settings,
@@ -103,7 +104,12 @@ export function Navigation() {
               <>
                 <Link to="/profile">
                   <Button variant="ghost" className="gap-2">
-                    <User className="h-4 w-4" />
+                    <Avatar className="h-7 w-7">
+                      <AvatarImage src={user.avatarUrl} alt={user.name} />
+                      <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
+                        {user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
                     <span className="hidden sm:inline">{user.name}</span>
                   </Button>
                 </Link>

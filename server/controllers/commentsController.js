@@ -20,6 +20,7 @@ async function getComments(req, res) {
       eventId: c.eventId,
       userId: c.userId,
       userName: c.userName,
+      avatarUrl: c.avatarUrl || '',
       text: c.text,
       createdAt: c.createdAt,
     }));
@@ -34,7 +35,7 @@ async function addComment(req, res) {
   try {
     const { commentsCollection } = getCollections();
     const { eventId } = req.params;
-    const { userId, userName, text } = req.body;
+    const { userId, userName, avatarUrl, text } = req.body;
 
     if (!userId || !userName || !text || !String(text).trim()) {
       return res.status(400).json({ success: false, message: 'userId, userName, and text are required.' });
@@ -44,6 +45,7 @@ async function addComment(req, res) {
       eventId,
       userId: sanitize(userId),
       userName: sanitize(userName),
+      avatarUrl: avatarUrl || '',
       text: sanitize(text),
       createdAt: new Date().toISOString(),
     };
