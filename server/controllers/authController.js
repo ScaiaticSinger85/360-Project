@@ -267,6 +267,7 @@ async function updateProfile(req, res) {
       _id: new ObjectId(userId),
     });
 
+    // Update avatarUrl on all existing comments by this user
     if (req.file) {
       const newAvatarUrl = imageToDisplayString(updatedUser.avatar);
       await commentsCollection.updateMany(
