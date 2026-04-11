@@ -194,34 +194,36 @@ export default function Home() {
       {/* How It Works */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Star className="h-8 w-8 text-blue-600" />
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-3">How It Works</h2>
+            <p className="text-gray-500 max-w-xl mx-auto">Get started in three simple steps and become part of the Kelowna community</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+            {/* Connector line (desktop only) */}
+            <div className="hidden md:block absolute top-10 left-1/4 right-1/4 h-0.5 bg-blue-200 z-0" />
+            <div className="relative z-10 bg-white rounded-2xl shadow-md p-8 text-center border border-gray-100 hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
+                <Star className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold mb-3">1. Browse Events</h3>
-              <p className="text-gray-600">
-                Explore a wide variety of events happening in Kelowna. Filter by category, date, or search for specific interests.
-              </p>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center shadow">1</div>
+              <h3 className="text-xl font-bold mb-3">Browse Events</h3>
+              <p className="text-gray-500 text-sm">Explore a wide variety of events happening in Kelowna. Filter by category, date, or search for specific interests.</p>
             </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="h-8 w-8 text-blue-600" />
+            <div className="relative z-10 bg-white rounded-2xl shadow-md p-8 text-center border border-gray-100 hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-700 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
+                <Users className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold mb-3">2. RSVP & Connect</h3>
-              <p className="text-gray-600">
-                Sign up for free and RSVP to events you're interested in. Connect with other community members.
-              </p>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center shadow">2</div>
+              <h3 className="text-xl font-bold mb-3">RSVP & Connect</h3>
+              <p className="text-gray-500 text-sm">Sign up for free and RSVP to events you're interested in. Connect with other community members.</p>
             </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Calendar className="h-8 w-8 text-blue-600" />
+            <div className="relative z-10 bg-white rounded-2xl shadow-md p-8 text-center border border-gray-100 hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
+                <Calendar className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold mb-3">3. Create Your Own</h3>
-              <p className="text-gray-600">
-                Have an idea? Create your own events and bring the community together around your passions.
-              </p>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center shadow">3</div>
+              <h3 className="text-xl font-bold mb-3">Create Your Own</h3>
+              <p className="text-gray-500 text-sm">Have an idea? Create your own events and bring the community together around your passions.</p>
             </div>
           </div>
         </div>

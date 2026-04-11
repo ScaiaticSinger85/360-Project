@@ -85,10 +85,28 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-[calc(100vh-4rem)] flex">
+      {/* Left side — Kelowna photo */}
+      <div className="hidden lg:flex lg:w-1/2 relative">
+        <img
+          src="https://images.unsplash.com/photo-1578945761766-a4bc916e0dc7?w=1200&q=80"
+          alt="Kelowna"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-blue-900/60 flex flex-col items-center justify-center text-white p-12">
+          <Calendar className="h-16 w-16 mb-6 text-blue-300" />
+          <h1 className="text-4xl font-bold mb-4 text-center">Join Kelowna Events</h1>
+          <p className="text-lg text-blue-100 text-center">
+            Create events, RSVP, and connect with your local community.
+          </p>
+        </div>
+      </div>
+
+      {/* Right side — form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center justify-center gap-2 mb-4">
+          <Link to="/" className="inline-flex items-center justify-center gap-2 mb-4 lg:hidden">
             <Calendar className="h-10 w-10 text-blue-600" />
             <span className="text-2xl font-bold text-gray-900">Kelowna Events</span>
           </Link>
@@ -192,6 +210,7 @@ export default function SignUp() {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );

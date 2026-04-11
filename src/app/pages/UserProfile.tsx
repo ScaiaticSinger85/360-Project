@@ -126,9 +126,22 @@ export default function UserProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Profile Settings</h1>
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 py-10 px-4 sm:px-6 lg:px-8 text-white">
+        <div className="max-w-3xl mx-auto flex items-center gap-5">
+          <Avatar className="h-16 w-16 border-4 border-white/30">
+            <AvatarImage src={previewUrl} alt={formData.name} />
+            <AvatarFallback className="text-2xl bg-blue-400 text-white">
+              {getInitials(formData.name)}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-3xl font-bold">{formData.name || 'Your Profile'}</h1>
+            <p className="text-blue-100 capitalize">{user.role} · Member since {new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</p>
+          </div>
+        </div>
+      </div>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <div className="space-y-6">
           <Card>

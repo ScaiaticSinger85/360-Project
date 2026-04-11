@@ -76,7 +76,7 @@ export default function EventDetails() {
     }
 
     if (eventId && user) {
-      setIsRsvped(getRSVP(eventId));
+      setIsRsvped(getRSVP(eventId, user.id));
     }
   }, [eventId, user, events]);
 

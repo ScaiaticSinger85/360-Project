@@ -195,7 +195,7 @@ export default function EventBrowse() {
             {filteredEvents.map((event) => (
               <Link key={event.id} to={`/events/${event.id}`}>
                 <Card className="hover:shadow-lg transition-shadow h-full">
-                  <div className="aspect-video overflow-hidden bg-gray-100">
+                  <div className="aspect-video overflow-hidden bg-gray-100 relative">
                     <img
                       src={event.imageUrl || getCategoryImage(event.category)}
                       alt={event.title}
@@ -206,6 +206,9 @@ export default function EventBrowse() {
                         img.src = getCategoryImage(event.category);
                       }}
                     />
+                    <span className="absolute top-3 left-3 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                      {event.category}
+                    </span>
                   </div>
 
                   <CardContent className="p-6">
