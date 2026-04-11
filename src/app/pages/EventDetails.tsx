@@ -6,6 +6,7 @@ import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import {
@@ -28,6 +29,7 @@ type Comment = {
   eventId: string;
   userId: string;
   userName: string;
+  avatarUrl?: string;
   text: string;
   createdAt: string;
 };
@@ -98,7 +100,7 @@ export default function EventDetails() {
       const res = await fetch(`/api/events/${eventId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, userName: user.name, text: newComment.trim() }),
+        body: JSON.stringify({ userId: user.id, userName: user.name, avatarUrl: user.avatarUrl || '', text: newComment.trim() }),
       });
       const data = await res.json();
       if (data.success) {
@@ -247,7 +249,14 @@ export default function EventDetails() {
                     {reviews.map((review) => (
                       <div key={review.id} className="border-b pb-4 last:border-b-0">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-semibold">{review.author}</span>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-7 w-7">
+                              <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
+                                {review.author.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-semibold">{review.author}</span>
+                          </div>
                           <span className="text-sm text-gray-500">
                             {format(new Date(review.createdAt), 'MMM d, yyyy')}
                           </span>
@@ -352,6 +361,12 @@ export default function EventDetails() {
                   <div className="space-y-4">
                     {comments.map((c) => (
                       <div key={c.id} className="flex items-start gap-3 border-b pb-4 last:border-b-0">
+                        <Avatar className="h-8 w-8 mt-0.5 flex-shrink-0">
+                          <AvatarImage src={c.avatarUrl || (user?.id === c.userId ? user?.avatarUrl : undefined)} />
+                          <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
+                            {c.userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-semibold text-sm">{c.userName}</span>

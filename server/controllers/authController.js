@@ -206,7 +206,7 @@ async function signin(req, res) {
 
 async function updateProfile(req, res) {
   try {
-    const { usersCollection } = getCollections();
+    const { usersCollection, commentsCollection } = getCollections();
     const { userId } = req.params;
     const data = req.body || {};
 
@@ -266,6 +266,15 @@ async function updateProfile(req, res) {
     const updatedUser = await usersCollection.findOne({
       _id: new ObjectId(userId),
     });
+
+    // Update avatarUrl on all existing comments by this user
+    if (req.file) {
+      const newAvatarUrl = imageToDisplayString(updatedUser.avatar);
+      await commentsCollection.updateMany(
+        { userId },
+        { $set: { avatarUrl: newAvatarUrl } }
+      );
+    }
 
     return res.status(200).json({
       success: true,
