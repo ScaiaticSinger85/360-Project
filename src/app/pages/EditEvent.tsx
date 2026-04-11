@@ -155,8 +155,8 @@ export default function EditEvent() {
       newErrors.capacity = 'Capacity cannot exceed 10,000';
     }
 
-    if (!formData.imageUrl.trim() || !formData.imageUrl.startsWith('http')) {
-      newErrors.imageUrl = 'Please enter a valid URL';
+    if (formData.imageUrl.trim() && !formData.imageUrl.startsWith('http')) {
+      newErrors.imageUrl = 'Please enter a valid URL starting with http';
     }
 
     setErrors(newErrors);
@@ -427,7 +427,7 @@ export default function EditEvent() {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="imageUrl">Image URL <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="imageUrl">Image URL</Label>
                   <Input
                     id="imageUrl"
                     type="url"
@@ -438,7 +438,7 @@ export default function EditEvent() {
                   />
                   {errors.imageUrl && <p className="text-sm text-red-600">{errors.imageUrl}</p>}
                   <p className="text-xs text-gray-500">
-                    Tip: Use <span className="font-medium text-blue-600">unsplash.com</span> for free high-quality photos
+                    Optional — if you don't add one, a default image will be used based on your event's category. Tip: Use <span className="font-medium text-blue-600">unsplash.com</span> for free high-quality photos.
                   </p>
                 </div>
 
