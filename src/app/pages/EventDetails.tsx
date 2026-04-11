@@ -151,7 +151,7 @@ export default function EventDetails() {
     }
 
     try {
-      await toggleRSVP(event.id);
+      await toggleRSVP(event.id, user.id);
       setIsRsvped(!isRsvped);
       toast.success(isRsvped ? 'RSVP removed' : 'RSVP successful');
     } catch {

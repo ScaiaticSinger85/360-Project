@@ -67,7 +67,7 @@ type DataContextType = {
   updateEvent: (eventId: string, eventData: UpdateEventData) => Promise<EventType>;
   deleteEvent: (eventId: string) => Promise<void>;
   getRSVP: (eventId: string) => boolean;
-  toggleRSVP: (eventId: string) => void;
+  toggleRSVP: (eventId: string, userId?: string) => void;
   getEventReviews: (eventId: string) => ReviewType[];
   addEventReview: (eventId: string, review: Omit<ReviewType, 'id' | 'eventId' | 'createdAt'>) => void;
 };
@@ -177,16 +177,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return !!rsvps[eventId];
   };
 
-  const toggleRSVP = (eventId: string) => {
-    setRsvps((prev) => {
-      const updated = {
-        ...prev,
-        [eventId]: !prev[eventId],
-      };
+  const toggleRSVP = async (eventId: string, userId?: string) => {
+    const isCurrentlyRsvped = !!rsvps[eventId];
+    const newRsvpState = !isCurrentlyRsvped;
 
+    // Update local RSVP state
+    setRsvps((prev) => {
+      const updated = { ...prev, [eventId]: newRsvpState };
       localStorage.setItem(RSVP_STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
+
+    // Update attendee count in local events state immediately
+    setEvents((prev) =>
+      prev.map((event) => {
+        if (event.id !== eventId) return event;
+        return {
+          ...event,
+          attendees: newRsvpState
+            ? event.attendees + 1
+            : Math.max(0, event.attendees - 1),
+        };
+      })
+    );
+
+    // Sync with server
+    try {
+      await fetch(`${API_BASE_URL}/api/events/${eventId}/rsvp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+    } catch {
+      // Server offline — local state still updated
+    }
   };
 
   const getEventReviews = (eventId: string) => {
