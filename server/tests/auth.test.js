@@ -17,7 +17,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 
-// ─── Signup Tests ────────────────────────────────────────────────────────────
+// Signups
 
 describe('POST /api/auth/signup', () => {
   beforeEach(() => {
@@ -105,7 +105,7 @@ describe('POST /api/auth/signup', () => {
   });
 });
 
-// ─── Signin Tests ─────────────────────────────────────────────────────────────
+// Sign In Tests
 
 describe('POST /api/auth/signin', () => {
   it('returns 400 when fields are missing', async () => {
