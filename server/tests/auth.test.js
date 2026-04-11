@@ -17,7 +17,7 @@ const app = express();
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 
-// ─── Signup Tests ────────────────────────────────────────────────────────────
+// Signups
 
 describe('POST /api/auth/signup', () => {
   beforeEach(() => {
@@ -105,7 +105,7 @@ describe('POST /api/auth/signup', () => {
   });
 });
 
-// ─── Signin Tests ─────────────────────────────────────────────────────────────
+// Sign In Tests
 
 describe('POST /api/auth/signin', () => {
   it('returns 400 when fields are missing', async () => {
@@ -145,6 +145,8 @@ describe('POST /api/auth/signin', () => {
     expect(res.body.message).toMatch(/incorrect password/i);
   });
 
+  // Checks password hashing and response structure on successful login
+
   it('returns 200 with correct credentials', async () => {
     const hashed = await bcrypt.hash('correctpass', 10);
     const mockUser = {
@@ -169,7 +171,7 @@ describe('POST /api/auth/signin', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.user).toBeDefined();
-    expect(res.body.user.password).toBeUndefined(); // password should not be returned
+    expect(res.body.user.password).toBeUndefined(); // password should not be returned for security
   });
 
   it('returns 403 when account is disabled', async () => {
