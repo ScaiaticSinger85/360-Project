@@ -1,16 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Calendar, Heart, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function UserProfile() {
   const { user, updateProfile, isLoading } = useAuth();
+  const { events, getRSVP } = useData();
+
+  const eventsCreated = user ? events.filter((e) => e.organizerId === user.id).length : 0;
+  const eventsRsvped = user ? events.filter((e) => getRSVP(e.id, user.id)).length : 0;
 
   const [formData, setFormData] = useState({
     name: '',
@@ -128,16 +134,35 @@ export default function UserProfile() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 py-10 px-4 sm:px-6 lg:px-8 text-white">
-        <div className="max-w-3xl mx-auto flex items-center gap-5">
-          <Avatar className="h-16 w-16 border-4 border-white/30">
-            <AvatarImage src={previewUrl} alt={formData.name} />
-            <AvatarFallback className="text-2xl bg-blue-400 text-white">
-              {getInitials(formData.name)}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h1 className="text-3xl font-bold">{formData.name || 'Your Profile'}</h1>
-            <p className="text-blue-100 capitalize">{user.role} · Member since {new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</p>
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center gap-5 mb-6">
+            <Avatar className="h-16 w-16 border-4 border-white/30">
+              <AvatarImage src={previewUrl} alt={formData.name} />
+              <AvatarFallback className="text-2xl bg-blue-400 text-white">
+                {getInitials(formData.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-3xl font-bold">{formData.name || 'Your Profile'}</h1>
+              <p className="text-blue-100 capitalize">{user.role} · Member since {new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-white/10 rounded-xl p-4 text-center backdrop-blur-sm">
+              <Calendar className="h-5 w-5 mx-auto mb-1 text-blue-200" />
+              <div className="text-2xl font-bold">{eventsCreated}</div>
+              <div className="text-xs text-blue-200">Events Created</div>
+            </div>
+            <div className="bg-white/10 rounded-xl p-4 text-center backdrop-blur-sm">
+              <Heart className="h-5 w-5 mx-auto mb-1 text-blue-200" />
+              <div className="text-2xl font-bold">{eventsRsvped}</div>
+              <div className="text-xs text-blue-200">RSVPs</div>
+            </div>
+            <div className="bg-white/10 rounded-xl p-4 text-center backdrop-blur-sm">
+              <Star className="h-5 w-5 mx-auto mb-1 text-blue-200" />
+              <div className="text-2xl font-bold capitalize">{user.role}</div>
+              <div className="text-xs text-blue-200">Account Type</div>
+            </div>
           </div>
         </div>
       </div>

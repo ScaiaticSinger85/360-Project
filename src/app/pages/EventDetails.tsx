@@ -20,6 +20,7 @@ import {
   Star,
   MessageSquare,
   Trash,
+  Share2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -202,12 +203,25 @@ export default function EventDetails() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Link to="/events">
-          <Button variant="ghost" className="mb-6 gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Events
+        <div className="flex items-center justify-between mb-6">
+          <Link to="/events">
+            <Button variant="ghost" className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Events
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              toast.success('Link copied to clipboard!');
+            }}
+          >
+            <Share2 className="h-4 w-4" />
+            Share
           </Button>
-        </Link>
+        </div>
 
         <div className="aspect-video w-full overflow-hidden rounded-xl mb-8 bg-gray-100 relative">
           <img
