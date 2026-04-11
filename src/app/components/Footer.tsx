@@ -142,8 +142,9 @@ export function Footer() {
         </div>
 
         {/* Copyright */}
-        <div className="border-t border-gray-800 pt-8 text-center text-sm text-gray-400">
+        <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-3 text-sm text-gray-400">
           <p>© 2026 Kelowna Events. All rights reserved.</p>
+          <p>Made with ❤️ for the Kelowna community</p>
         </div>
       </div>
     </footer>

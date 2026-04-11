@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getCategoryImage } from '../utils/categoryImages';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Calendar, MapPin, Users, ArrowRight, Star } from 'lucide-react';
@@ -17,12 +18,12 @@ export default function Home() {
     .slice(0, 6);
 
   const categories = [
-    { name: 'Music', icon: '🎵', count: events.filter(e => e.category === 'Music').length },
-    { name: 'Food & Drink', icon: '🍷', count: events.filter(e => e.category === 'Food & Drink').length },
-    { name: 'Sports & Fitness', icon: '⚽', count: events.filter(e => e.category === 'Sports & Fitness').length },
-    { name: 'Arts & Culture', icon: '🎨', count: events.filter(e => e.category === 'Arts & Culture').length },
-    { name: 'Technology', icon: '💻', count: events.filter(e => e.category === 'Technology').length },
-    { name: 'Community', icon: '🤝', count: events.filter(e => e.category === 'Community').length },
+    { name: 'Music', icon: '🎵', count: events.filter(e => e.category === 'Music').length, bg: 'from-purple-500 to-pink-500' },
+    { name: 'Food & Drink', icon: '🍷', count: events.filter(e => e.category === 'Food & Drink').length, bg: 'from-orange-400 to-red-500' },
+    { name: 'Sports & Fitness', icon: '⚽', count: events.filter(e => e.category === 'Sports & Fitness').length, bg: 'from-green-400 to-emerald-600' },
+    { name: 'Arts & Culture', icon: '🎨', count: events.filter(e => e.category === 'Arts & Culture').length, bg: 'from-yellow-400 to-orange-500' },
+    { name: 'Technology', icon: '💻', count: events.filter(e => e.category === 'Technology').length, bg: 'from-blue-500 to-cyan-500' },
+    { name: 'Community', icon: '🤝', count: events.filter(e => e.category === 'Community').length, bg: 'from-rose-400 to-fuchsia-600' },
   ];
 
   return (
@@ -43,10 +44,10 @@ export default function Home() {
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-5xl font-bold mb-6">
+            <h1 className="text-5xl font-bold mb-6 drop-shadow-lg" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
               Discover Events in Kelowna
             </h1>
-            <p className="text-xl mb-8 text-gray-200 max-w-2xl mx-auto">
+            <p className="text-xl mb-8 text-gray-200 max-w-2xl mx-auto drop-shadow">
               Join your local community in amazing experiences. Find events, connect with neighbors,
               and make memories in beautiful Kelowna.
             </p>
@@ -107,13 +108,11 @@ export default function Home() {
                 key={category.name}
                 to={`/events?category=${encodeURIComponent(category.name)}`}
               >
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-3">{category.icon}</div>
-                    <h3 className="font-semibold mb-1">{category.name}</h3>
-                    <p className="text-sm text-gray-500">{category.count} events</p>
-                  </CardContent>
-                </Card>
+                <div className={`bg-gradient-to-br ${category.bg} rounded-xl p-6 text-center text-white hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer h-36 flex flex-col items-center justify-center`}>
+                  <div className="text-4xl mb-2">{category.icon}</div>
+                  <h3 className="font-semibold text-sm mb-1 leading-tight">{category.name}</h3>
+                  <p className="text-xs text-white/80">{category.count} events</p>
+                </div>
               </Link>
             ))}
           </div>
@@ -139,9 +138,12 @@ export default function Home() {
                 <Card className="hover:shadow-lg transition-shadow h-full">
                   <div className="aspect-video overflow-hidden">
                     <img
-                      src={event.imageUrl}
+                      src={event.imageUrl || getCategoryImage(event.category)}
                       alt={event.title}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = getCategoryImage(event.category);
+                      }}
                     />
                   </div>
                   <CardContent className="p-6">

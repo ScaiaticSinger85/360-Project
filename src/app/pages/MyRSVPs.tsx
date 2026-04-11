@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
+import { getCategoryImage } from '../utils/categoryImages';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Calendar, MapPin, Users, Heart } from 'lucide-react';
@@ -50,9 +51,9 @@ export default function MyRSVPs() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">My RSVPs</h1>
-          <p className="text-lg text-gray-600">
+        <div className="mb-8 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-10 bg-gradient-to-r from-rose-500 to-pink-600 rounded-xl text-white">
+          <h1 className="text-4xl font-bold mb-2">My RSVPs</h1>
+          <p className="text-lg text-rose-100">
             Events you’ve saved or RSVP’d to
           </p>
         </div>
@@ -77,9 +78,14 @@ export default function MyRSVPs() {
                 <Card className="hover:shadow-lg transition-shadow h-full">
                   <div className="aspect-video overflow-hidden bg-gray-100">
                     <img
-                      src={event.imageUrl || 'https://via.placeholder.com/800x450?text=Event+Image'}
+                      src={event.imageUrl || getCategoryImage(event.category)}
                       alt={event.title}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        img.onerror = null;
+                        img.src = getCategoryImage(event.category);
+                      }}
                     />
                   </div>
 

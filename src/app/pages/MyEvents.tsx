@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getCategoryImage } from '../utils/categoryImages';
 import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -102,9 +103,14 @@ export default function MyEvents() {
     <Card className="hover:shadow-md transition-shadow">
       <div className="aspect-video overflow-hidden">
         <img
-          src={event.imageUrl}
+          src={event.imageUrl || getCategoryImage(event.category)}
           alt={event.title}
           className="w-full h-full object-cover"
+          onError={(e) => {
+            const img = e.target as HTMLImageElement;
+            img.onerror = null;
+            img.src = getCategoryImage(event.category);
+          }}
         />
       </div>
 
@@ -166,14 +172,13 @@ export default function MyEvents() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-8 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-10 bg-gradient-to-r from-indigo-600 to-purple-700 rounded-xl text-white">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">My Events</h1>
-            <p className="text-lg text-gray-600">Manage your created events</p>
+            <h1 className="text-4xl font-bold mb-2">My Events</h1>
+            <p className="text-lg text-indigo-100">Manage your created events</p>
           </div>
-
           <Link to="/create-event">
-            <Button size="lg">Create New Event</Button>
+            <Button size="lg" className="bg-white text-indigo-700 hover:bg-indigo-50">Create New Event</Button>
           </Link>
         </div>
 
