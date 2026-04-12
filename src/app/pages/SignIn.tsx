@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Calendar, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { sanitizeEmail } from '../utils/security';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
@@ -46,7 +47,7 @@ export default function SignIn() {
 
     setIsLoading(true);
 
-    const result = await login(email, password);
+    const result = await login(sanitizeEmail(email), password);
 
     setIsLoading(false);
 
@@ -93,7 +94,7 @@ export default function SignIn() {
                   type="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(sanitizeEmail(e.target.value))}
                   required
                 />
               </div>
@@ -103,7 +104,7 @@ export default function SignIn() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required

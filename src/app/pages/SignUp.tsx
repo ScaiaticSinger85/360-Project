@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Calendar, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { sanitizeEmail, sanitizePlainText } from '../utils/security';
 
 export default function SignUp() {
   const [name, setName] = useState('');
@@ -47,6 +48,11 @@ export default function SignUp() {
       return false;
     }
 
+    if (!avatarFile) {
+      setError('Profile image is required');
+      return false;
+    }
+
     if (avatarFile && !avatarFile.type.startsWith('image/')) {
       setError('Please upload a valid image file');
       return false;
@@ -66,8 +72,8 @@ export default function SignUp() {
     setIsLoading(true);
 
     const result = await signup(
-      name,
-      email,
+      sanitizePlainText(name),
+      sanitizeEmail(email),
       password,
       confirmPassword,
       avatarFile
@@ -119,7 +125,7 @@ export default function SignUp() {
                   type="text"
                   placeholder="John Doe"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => setName(sanitizePlainText(e.target.value))}
                   required
                 />
               </div>
@@ -131,7 +137,7 @@ export default function SignUp() {
                   type="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(sanitizeEmail(e.target.value))}
                   required
                 />
               </div>
@@ -143,9 +149,10 @@ export default function SignUp() {
                   type="file"
                   accept="image/*"
                   onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+                  required
                 />
                 <p className="text-xs text-gray-500">
-                  Optional. JPG, PNG, WEBP, or GIF up to 5MB
+                  Required. JPG, PNG, WEBP, or GIF up to 5MB
                 </p>
               </div>
 
@@ -154,7 +161,7 @@ export default function SignUp() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -167,7 +174,7 @@ export default function SignUp() {
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required

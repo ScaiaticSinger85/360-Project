@@ -14,6 +14,17 @@ async function connectToDatabase() {
   if (!db) {
     await client.connect();
     db = client.db('event_app');
+    const existingCollections = await db.listCollections().toArray();
+    const collectionNames = new Set(existingCollections.map((collection) => collection.name));
+
+    if (!collectionNames.has('comments')) {
+      await db.createCollection('comments');
+    }
+
+    if (!collectionNames.has('reactions')) {
+      await db.createCollection('reactions');
+    }
+
     console.log('Connected to MongoDB');
   }
 
@@ -34,6 +45,8 @@ function getCollections() {
   return {
     usersCollection: database.collection('users'),
     eventsCollection: database.collection('events'),
+    commentsCollection: database.collection('comments'),
+    reactionsCollection: database.collection('reactions'),
   };
 }
 

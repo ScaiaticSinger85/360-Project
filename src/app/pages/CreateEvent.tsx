@@ -1,168 +1,85 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Switch } from '../components/ui/switch';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { sanitizePlainText } from '../utils/security';
 
-const CATEGORIES = [
-  'Music',
-  'Food & Drink',
-  'Sports & Fitness',
-  'Arts & Culture',
-  'Technology',
-  'Community',
-];
+const CATEGORIES = ['Music', 'Food & Drink', 'Sports & Fitness', 'Arts & Culture', 'Technology', 'Community'];
 
 export default function CreateEvent() {
   const { user } = useAuth();
   const { createEvent } = useData();
   const navigate = useNavigate();
-
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: '',
+    category: CATEGORIES[0],
     date: '',
     time: '',
     location: '',
     address: '',
-    capacity: '',
-    imageUrl: '',
+    capacity: '25',
     isPublic: true,
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const previewUrl = useMemo(() => {
+    if (imageFile) return URL.createObjectURL(imageFile);
+    return imageUrl;
+  }, [imageFile, imageUrl]);
 
-  if (!user || user.role === 'unregistered') {
+  if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <Card className="max-w-md w-full">
           <CardContent className="pt-6">
-            <p className="text-center mb-4">Please sign in to create events</p>
-            <Link to="/sign-in">
-              <Button className="w-full">Sign In</Button>
-            </Link>
+            <p className="mb-4 text-center">Please sign in to create events.</p>
+            <Link to="/sign-in"><Button className="w-full">Sign In</Button></Link>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.title.trim()) {
-      newErrors.title = 'Title is required';
-    } else if (formData.title.trim().length < 5) {
-      newErrors.title = 'Title must be at least 5 characters';
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    } else if (formData.description.trim().length < 20) {
-      newErrors.description = 'Description must be at least 20 characters';
-    }
-
-    if (!formData.category) {
-      newErrors.category = 'Category is required';
-    }
-
-    if (!formData.date) {
-      newErrors.date = 'Date is required';
-    } else {
-      const selectedDate = new Date(formData.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (selectedDate < today) {
-        newErrors.date = 'Event date must be in the future';
-      }
-    }
-
-    if (!formData.time) {
-      newErrors.time = 'Time is required';
-    }
-
-    if (!formData.location.trim()) {
-      newErrors.location = 'Location is required';
-    }
-
-    if (!formData.address.trim()) {
-      newErrors.address = 'Address is required';
-    }
-
-    if (!formData.capacity || parseInt(formData.capacity) <= 0) {
-      newErrors.capacity = 'Capacity must be greater than 0';
-    } else if (parseInt(formData.capacity) > 10000) {
-      newErrors.capacity = 'Capacity cannot exceed 10,000';
-    }
-
-    if (!formData.imageUrl.trim()) {
-      newErrors.imageUrl = 'Image URL is required';
-    } else if (!formData.imageUrl.startsWith('http')) {
-      newErrors.imageUrl = 'Please enter a valid URL';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      toast.error('Please fix the errors in the form');
-      return;
-    }
-
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setIsSubmitting(true);
 
     try {
       await createEvent({
-        title: formData.title.trim(),
-        description: formData.description.trim(),
+        title: sanitizePlainText(formData.title),
+        description: sanitizePlainText(formData.description),
         category: formData.category,
         date: formData.date,
         time: formData.time,
-        location: formData.location.trim(),
-        address: formData.address.trim(),
-        capacity: parseInt(formData.capacity),
-        imageUrl: formData.imageUrl.trim(),
-        organizerName: user.name,
-        organizerId: user.id,
+        location: sanitizePlainText(formData.location),
+        address: sanitizePlainText(formData.address),
+        capacity: Number(formData.capacity),
+        imageUrl: imageUrl.trim(),
+        imageFile,
         isPublic: formData.isPublic,
       });
 
-      toast.success('Event created successfully!');
+      toast.success('Event created successfully.');
       navigate('/my-events');
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to create event';
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : 'Failed to create event.');
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-background py-8">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link to="/my-events">
           <Button variant="ghost" className="mb-6 gap-2">
@@ -173,163 +90,91 @@ export default function CreateEvent() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-3xl">Create New Event</CardTitle>
-            <CardDescription>
-              Fill out the form below to create a new event in Kelowna
-            </CardDescription>
+            <CardTitle className="text-3xl">Create Event</CardTitle>
           </CardHeader>
-
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="title">Event Title *</Label>
-                <Input
-                  id="title"
-                  placeholder="e.g., Summer Music Festival"
-                  value={formData.title}
-                  onChange={(e) => handleChange('title', e.target.value)}
-                />
-                {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
+                <Label htmlFor="title">Event Title</Label>
+                <Input id="title" value={formData.title} onChange={(e) => setFormData((previous) => ({ ...previous, title: e.target.value }))} required />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Describe your event in detail..."
-                  rows={5}
-                  value={formData.description}
-                  onChange={(e) => handleChange('description', e.target.value)}
-                />
-                {errors.description && (
-                  <p className="text-sm text-red-600">{errors.description}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="category">Category *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => handleChange('category', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.category && <p className="text-sm text-red-600">{errors.category}</p>}
+                <Label htmlFor="description">Description</Label>
+                <Textarea id="description" rows={5} value={formData.description} onChange={(e) => setFormData((previous) => ({ ...previous, description: e.target.value }))} required />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="date">Date *</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => handleChange('date', e.target.value)}
-                  />
-                  {errors.date && <p className="text-sm text-red-600">{errors.date}</p>}
+                  <Label htmlFor="category">Category</Label>
+                  <select
+                    id="category"
+                    className="w-full rounded-md border bg-background px-3 py-2"
+                    value={formData.category}
+                    onChange={(e) => setFormData((previous) => ({ ...previous, category: e.target.value }))}
+                  >
+                    {CATEGORIES.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="time">Time *</Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    value={formData.time}
-                    onChange={(e) => handleChange('time', e.target.value)}
-                  />
-                  {errors.time && <p className="text-sm text-red-600">{errors.time}</p>}
+                  <Label htmlFor="capacity">Capacity</Label>
+                  <Input id="capacity" type="number" min="1" value={formData.capacity} onChange={(e) => setFormData((previous) => ({ ...previous, capacity: e.target.value }))} required />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="date">Date</Label>
+                  <Input id="date" type="date" value={formData.date} onChange={(e) => setFormData((previous) => ({ ...previous, date: e.target.value }))} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="time">Time</Label>
+                  <Input id="time" type="time" value={formData.time} onChange={(e) => setFormData((previous) => ({ ...previous, time: e.target.value }))} required />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location">Venue Name *</Label>
-                <Input
-                  id="location"
-                  placeholder="e.g., Waterfront Park"
-                  value={formData.location}
-                  onChange={(e) => handleChange('location', e.target.value)}
-                />
-                {errors.location && <p className="text-sm text-red-600">{errors.location}</p>}
+                <Label htmlFor="location">Venue</Label>
+                <Input id="location" value={formData.location} onChange={(e) => setFormData((previous) => ({ ...previous, location: e.target.value }))} required />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Address *</Label>
-                <Input
-                  id="address"
-                  placeholder="e.g., 1600 Abbott St, Kelowna, BC V1Y 1A9"
-                  value={formData.address}
-                  onChange={(e) => handleChange('address', e.target.value)}
-                />
-                {errors.address && <p className="text-sm text-red-600">{errors.address}</p>}
+                <Label htmlFor="address">Address</Label>
+                <Input id="address" value={formData.address} onChange={(e) => setFormData((previous) => ({ ...previous, address: e.target.value }))} required />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="capacity">Capacity *</Label>
-                <Input
-                  id="capacity"
-                  type="number"
-                  min="1"
-                  placeholder="e.g., 100"
-                  value={formData.capacity}
-                  onChange={(e) => handleChange('capacity', e.target.value)}
-                />
-                {errors.capacity && <p className="text-sm text-red-600">{errors.capacity}</p>}
+                <Label htmlFor="imageFile">Event Image Upload</Label>
+                <Input id="imageFile" type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="imageUrl">Event Image URL *</Label>
-                <Input
-                  id="imageUrl"
-                  type="url"
-                  placeholder="https://example.com/image.jpg"
-                  value={formData.imageUrl}
-                  onChange={(e) => handleChange('imageUrl', e.target.value)}
-                />
-                {errors.imageUrl && <p className="text-sm text-red-600">{errors.imageUrl}</p>}
-                <p className="text-xs text-gray-500">
-                  Tip: Use Unsplash.com for free event images
-                </p>
+                <Label htmlFor="imageUrl">Or Image URL</Label>
+                <Input id="imageUrl" type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://example.com/image.jpg" />
               </div>
 
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="space-y-0.5">
-                  <Label htmlFor="isPublic">Public Event</Label>
-                  <p className="text-sm text-gray-500">
-                    Make this event visible to all users
-                  </p>
+              {previewUrl ? (
+                <div className="overflow-hidden rounded-lg border">
+                  <img src={previewUrl} alt="Event preview" className="h-64 w-full object-cover" />
                 </div>
-                <Switch
-                  id="isPublic"
-                  checked={formData.isPublic}
-                  onCheckedChange={(checked) => handleChange('isPublic', checked)}
-                />
-              </div>
+              ) : null}
 
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  All fields marked with * are required. Please ensure all information is accurate.
-                </AlertDescription>
-              </Alert>
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <p className="font-medium">Public Event</p>
+                  <p className="text-sm text-muted-foreground">Allow the event to appear in the public event feed.</p>
+                </div>
+                <Switch checked={formData.isPublic} onCheckedChange={(checked) => setFormData((previous) => ({ ...previous, isPublic: checked }))} />
+              </div>
 
               <div className="flex gap-4">
                 <Button type="submit" className="flex-1" disabled={isSubmitting}>
                   {isSubmitting ? 'Creating...' : 'Create Event'}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/my-events')}
-                >
+                <Button type="button" variant="outline" onClick={() => navigate('/my-events')}>
                   Cancel
                 </Button>
               </div>
