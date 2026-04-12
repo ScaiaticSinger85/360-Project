@@ -12,6 +12,20 @@ import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { sanitizePlainText } from '../utils/security';
 
+function SectionHeader({ icon, title, description }: { icon: React.ReactNode; title: string; description?: string }) {
+  return (
+    <div className="flex items-start gap-3 mb-4">
+      <div className="bg-blue-100 rounded-lg p-2 flex-shrink-0 mt-0.5">
+        <div className="text-blue-600">{icon}</div>
+      </div>
+      <div>
+        <h3 className="font-semibold text-gray-900">{title}</h3>
+        {description && <p className="text-sm text-gray-500">{description}</p>}
+      </div>
+    </div>
+  );
+}
+
 export default function EditEvent() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -166,9 +180,26 @@ export default function EditEvent() {
                   Cancel
                 </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* Submit */}
+          <div className="flex gap-4 pb-4">
+            <Button type="submit" size="lg" className="flex-1 gap-2" disabled={isSubmitting}>
+              <Edit className="h-5 w-5" />
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              onClick={() => navigate(`/events/${event.id}`)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );

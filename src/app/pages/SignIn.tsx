@@ -60,16 +60,22 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center justify-center gap-2 mb-4">
-            <Calendar className="h-10 w-10 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">Kelowna Events</span>
-          </Link>
-          <h2 className="text-3xl font-bold text-gray-900">Welcome back</h2>
-          <p className="mt-2 text-gray-600">Sign in to your account</p>
+    <div className="min-h-[calc(100vh-4rem)] flex">
+      {/* Left side — Kelowna photo */}
+      <div className="hidden lg:flex lg:w-1/2 relative">
+        <img
+          src="https://images.unsplash.com/photo-1578945761766-a4bc916e0dc7?w=1200&q=80"
+          alt="Kelowna"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-blue-900/60 flex flex-col items-center justify-center text-white p-12">
+          <Calendar className="h-16 w-16 mb-6 text-blue-300" />
+          <h1 className="text-4xl font-bold mb-4 text-center">Kelowna Events</h1>
+          <p className="text-lg text-blue-100 text-center">
+            Discover and connect with your community through amazing local events.
+          </p>
         </div>
+      </div>
 
         <Card>
           <CardHeader>
@@ -110,20 +116,9 @@ export default function SignIn() {
                   required
                 />
               </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Signing in...' : 'Sign In'}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center text-sm">
-              <span className="text-gray-600">Don't have an account? </span>
-              <Link to="/sign-up" className="font-semibold text-blue-600 hover:text-blue-500">
-                Sign up
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

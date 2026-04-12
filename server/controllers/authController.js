@@ -100,6 +100,13 @@ async function signin(req, res) {
       return res.status(401).json({ success: false, message: 'No account found with that email.' });
     }
 
+    if (user.isDisabled) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been disabled. Please contact an admin.',
+      });
+    }
+
     const passwordMatches = await bcrypt.compare(password, user.password);
     if (!passwordMatches) {
       return res.status(401).json({ success: false, message: 'Incorrect password.' });
@@ -116,7 +123,7 @@ async function signin(req, res) {
 
 async function updateProfile(req, res) {
   try {
-    const { usersCollection } = getCollections();
+    const { usersCollection, commentsCollection } = getCollections();
     const { userId } = req.params;
 
     if (!ObjectId.isValid(userId)) {

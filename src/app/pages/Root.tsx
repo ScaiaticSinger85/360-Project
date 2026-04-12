@@ -3,6 +3,7 @@ import { AuthProvider } from '../contexts/AuthContext';
 import { DataProvider } from '../contexts/DataContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { Navigation } from '../components/Navigation';
+import { Footer } from '../components/Footer';
 import { Toaster } from '../components/ui/sonner';
 
 export default function Root() {

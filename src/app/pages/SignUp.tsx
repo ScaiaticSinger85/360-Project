@@ -15,34 +15,49 @@ export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatar, setAvatar] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
   const { signup } = useAuth();
   const navigate = useNavigate();
 
-  const validateForm = (): boolean => {
-    if (!name || !email || !password || !confirmPassword) {
-      setError('Please fill in all required fields');
-      return false;
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.type)) {
+      setError('Only image files are allowed (jpg, png, webp, gif)');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be under 5MB');
+      return;
     }
 
+    setAvatar(file);
+    setAvatarPreview(URL.createObjectURL(file));
+    setError('');
+  };
+
+  const validateForm = (): boolean => {
+    if (!name || !email || !password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return false;
+    }
     if (name.length < 2) {
       setError('Name must be at least 2 characters');
       return false;
     }
-
     if (!email.includes('@') || !email.includes('.')) {
       setError('Please enter a valid email address');
       return false;
     }
-
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return false;
     }
-
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return false;
@@ -65,9 +80,7 @@ export default function SignUp() {
     e.preventDefault();
     setError('');
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
 
@@ -90,10 +103,28 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-[calc(100vh-4rem)] flex">
+      {/* Left side — Kelowna photo */}
+      <div className="hidden lg:flex lg:w-1/2 relative">
+        <img
+          src="https://images.unsplash.com/photo-1578945761766-a4bc916e0dc7?w=1200&q=80"
+          alt="Kelowna"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-blue-900/60 flex flex-col items-center justify-center text-white p-12">
+          <Calendar className="h-16 w-16 mb-6 text-blue-300" />
+          <h1 className="text-4xl font-bold mb-4 text-center">Join Kelowna Events</h1>
+          <p className="text-lg text-blue-100 text-center">
+            Create events, RSVP, and connect with your local community.
+          </p>
+        </div>
+      </div>
+
+      {/* Right side — form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center justify-center gap-2 mb-4">
+          <Link to="/" className="inline-flex items-center justify-center gap-2 mb-4 lg:hidden">
             <Calendar className="h-10 w-10 text-blue-600" />
             <span className="text-2xl font-bold text-gray-900">Kelowna Events</span>
           </Link>
@@ -108,7 +139,6 @@ export default function SignUp() {
               Create an account to start organizing and attending events
             </CardDescription>
           </CardHeader>
-
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
@@ -181,6 +211,24 @@ export default function SignUp() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="avatar">Profile Picture</Label>
+                {avatarPreview && (
+                  <img
+                    src={avatarPreview}
+                    alt="Preview"
+                    className="w-20 h-20 rounded-full object-cover mb-2"
+                  />
+                )}
+                <Input
+                  id="avatar"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                  onChange={handleAvatarChange}
+                />
+                <p className="text-xs text-gray-500">Optional. jpg, png, webp, gif — max 5MB</p>
+              </div>
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Creating account...' : 'Create Account'}
               </Button>
@@ -194,6 +242,7 @@ export default function SignUp() {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );

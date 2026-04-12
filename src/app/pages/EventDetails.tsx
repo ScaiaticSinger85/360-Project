@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getCategoryImage } from '../utils/categoryImages';
 import { useData } from '../contexts/DataContext';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -39,6 +40,56 @@ export default function EventDetails() {
       console.error('Failed to fetch event details:', error);
     });
   }, [id]);
+
+  const fetchComments = async (eid: string) => {
+    try {
+      const res = await fetch(`/api/events/${eid}/comments`);
+      const data = await res.json();
+      if (data.success) setComments(data.comments);
+    } catch {
+      // server offline — silently ignore
+    }
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) { toast.error('Please sign in to comment'); return; }
+    if (!newComment.trim()) { toast.error('Comment cannot be empty'); return; }
+
+    setIsPostingComment(true);
+    try {
+      const res = await fetch(`/api/events/${eventId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, userName: user.name, avatarUrl: user.avatarUrl || '', text: newComment.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setComments((prev) => [data.comment, ...prev]);
+        setNewComment('');
+        toast.success('Comment posted');
+      } else {
+        toast.error(data.message || 'Failed to post comment');
+      }
+    } catch {
+      toast.error('Server offline — cannot post comments right now');
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const res = await fetch(`/api/events/${eventId}/comments/${commentId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setComments((prev) => prev.filter((c) => c.id !== commentId));
+        toast.success('Comment deleted');
+      }
+    } catch {
+      toast.error('Failed to delete comment');
+    }
+  };
 
   if (!event) {
     return <div className="min-h-screen flex items-center justify-center bg-background">Event not found.</div>;
@@ -136,7 +187,7 @@ export default function EventDetails() {
             <ArrowLeft className="h-4 w-4" />
             Back to Events
           </Button>
-        </Link>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
@@ -201,12 +252,14 @@ export default function EventDetails() {
                 </form>
               </CardContent>
             </Card>
-          </div>
 
-          <div className="space-y-6">
+            {/* Comments Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Event Details</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Discussion ({comments.length})
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
                 <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-blue-600" />{format(new Date(event.date), 'EEEE, MMMM d, yyyy')}</div>

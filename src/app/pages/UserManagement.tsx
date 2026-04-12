@@ -8,6 +8,17 @@ import { Input } from '../components/ui/input';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 
+const API_BASE = '/api';
+
+interface ManagedUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  isDisabled: boolean;
+  createdAt: string;
+}
+
 export default function UserManagement() {
   const { user } = useAuth();
   const { users, events, updateUserRole, updateUserStatus } = useData();
@@ -50,6 +61,7 @@ export default function UserManagement() {
           </Link>
         </div>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <Card>
           <CardContent className="pt-6">
             <div className="relative">

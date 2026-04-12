@@ -14,6 +14,20 @@ import { sanitizePlainText } from '../utils/security';
 
 const CATEGORIES = ['Music', 'Food & Drink', 'Sports & Fitness', 'Arts & Culture', 'Technology', 'Community'];
 
+function SectionHeader({ icon, title, description }: { icon: React.ReactNode; title: string; description?: string }) {
+  return (
+    <div className="flex items-start gap-3 mb-4">
+      <div className="bg-blue-100 rounded-lg p-2 flex-shrink-0 mt-0.5">
+        <div className="text-blue-600">{icon}</div>
+      </div>
+      <div>
+        <h3 className="font-semibold text-gray-900">{title}</h3>
+        {description && <p className="text-sm text-gray-500">{description}</p>}
+      </div>
+    </div>
+  );
+}
+
 export default function CreateEvent() {
   const { user } = useAuth();
   const { createEvent } = useData();
@@ -78,6 +92,8 @@ export default function CreateEvent() {
     }
   };
 
+  const showImagePreview = formData.imageUrl.startsWith('http') && !imageError;
+
   return (
     <div className="min-h-screen bg-background py-8">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -125,7 +141,7 @@ export default function CreateEvent() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">Date</Label>
                   <Input id="date" type="date" value={formData.date} onChange={(e) => setFormData((previous) => ({ ...previous, date: e.target.value }))} required />
@@ -135,6 +151,30 @@ export default function CreateEvent() {
                   <Input id="time" type="time" value={formData.time} onChange={(e) => setFormData((previous) => ({ ...previous, time: e.target.value }))} required />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Location */}
+          <Card>
+            <CardContent className="p-6">
+              <SectionHeader
+                icon={<MapPin className="h-5 w-5" />}
+                title="Location"
+                description="Where will the event be held?"
+              />
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="location">Venue Name <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="location"
+                    placeholder="e.g., Waterfront Park"
+                    value={formData.location}
+                    onChange={(e) => handleChange('location', e.target.value)}
+                    className={errors.location ? 'border-red-400 focus-visible:ring-red-400' : ''}
+                  />
+                  {errors.location && <p className="text-sm text-red-600">{errors.location}</p>}
+                </div>
 
               <div className="space-y-2">
                 <Label htmlFor="location">Venue</Label>
@@ -178,9 +218,26 @@ export default function CreateEvent() {
                   Cancel
                 </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* Submit */}
+          <div className="flex gap-4 pb-4">
+            <Button type="submit" size="lg" className="flex-1 gap-2" disabled={isSubmitting}>
+              <CalendarPlus className="h-5 w-5" />
+              {isSubmitting ? 'Creating Event...' : 'Create Event'}
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              onClick={() => navigate('/my-events')}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );

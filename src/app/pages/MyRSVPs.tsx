@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { getCategoryImage } from '../utils/categoryImages';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Calendar, MapPin, Users, Heart } from 'lucide-react';
@@ -56,9 +57,9 @@ export default function MyRSVPs() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">My RSVPs</h1>
-          <p className="text-lg text-gray-600">
+        <div className="mb-8 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-10 bg-gradient-to-r from-rose-500 to-pink-600 rounded-xl text-white">
+          <h1 className="text-4xl font-bold mb-2">My RSVPs</h1>
+          <p className="text-lg text-rose-100">
             Events you’ve saved or RSVP’d to
           </p>
         </div>
@@ -83,9 +84,14 @@ export default function MyRSVPs() {
                 <Card className="hover:shadow-lg transition-shadow h-full">
                   <div className="aspect-video overflow-hidden bg-gray-100">
                     <img
-                      src={event.imageUrl || 'https://via.placeholder.com/800x450?text=Event+Image'}
+                      src={event.imageUrl || getCategoryImage(event.category)}
                       alt={event.title}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        img.onerror = null;
+                        img.src = getCategoryImage(event.category);
+                      }}
                     />
                   </div>
 
@@ -133,16 +139,21 @@ export default function MyRSVPs() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-16">
-            <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No RSVP events yet
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Browse events and RSVP to see them here
+          <div className="text-center py-20">
+            <div className="relative inline-block mb-6">
+              <div className="w-28 h-28 bg-rose-50 rounded-full flex items-center justify-center mx-auto">
+                <Heart className="h-14 w-14 text-rose-300" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-lg">🎉</span>
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">No RSVPs yet</h3>
+            <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+              Discover events in Kelowna and RSVP to save your spot. They'll all appear here.
             </p>
             <Link to="/events">
-              <Button>Browse Events</Button>
+              <Button size="lg" className="gap-2">Browse Events</Button>
             </Link>
           </div>
         )}

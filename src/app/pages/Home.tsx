@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getCategoryImage } from '../utils/categoryImages';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { ArrowRight, Calendar, MapPin, MessageSquare, ThumbsUp, Users } from 'lucide-react';

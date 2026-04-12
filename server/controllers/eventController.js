@@ -2,6 +2,10 @@ const { ObjectId } = require('mongodb');
 const { getCollections } = require('../config/db');
 const { sanitizeText } = require('../utils/security');
 
+function sanitize(value) {
+  return String(value || '').trim().replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function fileToBase64(file) {
   if (!file) return '';
   const base64 = file.buffer.toString('base64');
@@ -25,8 +29,8 @@ function imageToDisplayString(image) {
     if (base64String) {
       return `data:${image.contentType};base64,${base64String}`;
     }
+    if (base64String) return `data:${image.contentType};base64,${base64String}`;
   }
-
   return '';
 }
 
