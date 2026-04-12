@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -12,6 +13,7 @@ import {
   Heart,
   LayoutDashboard,
   LogOut,
+  Menu,
   MessageSquare,
   Moon,
   Settings,
@@ -35,6 +37,69 @@ export function Navigation() {
 
   const isActive = (path: string) => location.pathname === path;
   const isAdmin = user?.role === 'admin';
+  const closeMobile = () => setMobileOpen(false);
+
+  const navLinks = (
+    <>
+      <Link to="/events" onClick={closeMobile}>
+        <Button variant={isActive('/events') ? 'default' : 'ghost'} className="w-full justify-start gap-2">
+          <Calendar className="h-4 w-4" />
+          Browse Events
+        </Button>
+      </Link>
+
+      {user && user.role !== 'unregistered' && (
+        <>
+          <Link to="/create-event" onClick={closeMobile}>
+            <Button variant={isActive('/create-event') ? 'default' : 'ghost'} className="w-full justify-start gap-2">
+              <CalendarPlus className="h-4 w-4" />
+              Create Event
+            </Button>
+          </Link>
+          <Link to="/my-events" onClick={closeMobile}>
+            <Button variant={isActive('/my-events') ? 'default' : 'ghost'} className="w-full justify-start gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              My Events
+            </Button>
+          </Link>
+          <Link to="/my-rsvps" onClick={closeMobile}>
+            <Button variant={isActive('/my-rsvps') ? 'default' : 'ghost'} className="w-full justify-start gap-2">
+              <Heart className="h-4 w-4" />
+              My RSVPs
+            </Button>
+          </Link>
+          <Link to="/my-comments" onClick={closeMobile}>
+            <Button variant={isActive('/my-comments') ? 'default' : 'ghost'} className="w-full justify-start gap-2">
+              <MessageSquare className="h-4 w-4" />
+              My Comments
+            </Button>
+          </Link>
+          {isAdmin && (
+            <>
+              <Link to="/admin/comments" onClick={closeMobile}>
+                <Button variant={isActive('/admin/comments') ? 'default' : 'ghost'} className="w-full justify-start gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  All Comments
+                </Button>
+              </Link>
+              <Link to="/admin" onClick={closeMobile}>
+                <Button variant={isActive('/admin') ? 'default' : 'ghost'} className="w-full justify-start gap-2">
+                  <Settings className="h-4 w-4" />
+                  Admin DB
+                </Button>
+              </Link>
+              <Link to="/admin/users" onClick={closeMobile}>
+                <Button variant={isActive('/admin/users') ? 'default' : 'ghost'} className="w-full justify-start gap-2">
+                  <Users className="h-4 w-4" />
+                  Users
+                </Button>
+              </Link>
+            </>
+          )}
+        </>
+      )}
+    </>
+  );
 
   return (
     <nav className="bg-background border-b border-border sticky top-0 z-50">

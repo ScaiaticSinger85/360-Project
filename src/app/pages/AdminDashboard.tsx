@@ -37,7 +37,6 @@ export default function AdminDashboard() {
             <Button>Open User Management</Button>
           </Link>
         </div>
-      </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Mongo Users</p><p className="text-3xl font-bold">{users.length}</p></div><Users className="h-10 w-10 text-blue-600" /></div></CardContent></Card>

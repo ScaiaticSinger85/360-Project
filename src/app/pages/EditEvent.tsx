@@ -180,26 +180,9 @@ export default function EditEvent() {
                   Cancel
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Submit */}
-          <div className="flex gap-4 pb-4">
-            <Button type="submit" size="lg" className="flex-1 gap-2" disabled={isSubmitting}>
-              <Edit className="h-5 w-5" />
-              {isSubmitting ? 'Saving...' : 'Save Changes'}
-            </Button>
-            <Button
-              type="button"
-              size="lg"
-              variant="outline"
-              onClick={() => navigate(`/events/${event.id}`)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

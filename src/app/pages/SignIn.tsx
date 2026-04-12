@@ -77,6 +77,8 @@ export default function SignIn() {
         </div>
       </div>
 
+      <div className="flex w-full lg:w-1/2 items-center justify-center bg-background px-4 py-12">
+        <div className="w-full max-w-md">
         <Card>
           <CardHeader>
             <CardTitle>Sign In</CardTitle>
@@ -116,6 +118,18 @@ export default function SignIn() {
                   required
                 />
               </div>
+
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Signing in...' : 'Sign In'}
+              </Button>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Don&apos;t have an account?{' '}
+                <Link to="/sign-up" className="text-primary hover:underline">
+                  Sign up
+                </Link>
+              </p>
+            </form>
             </CardContent>
           </Card>
         </div>

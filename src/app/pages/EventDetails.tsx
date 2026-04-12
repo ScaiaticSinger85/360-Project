@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getCategoryImage } from '../utils/categoryImages';
 import { useData } from '../contexts/DataContext';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -36,60 +35,11 @@ export default function EventDetails() {
 
   useEffect(() => {
     if (!id) return;
+
     void fetchEventById(id).catch((error) => {
       console.error('Failed to fetch event details:', error);
     });
-  }, [id]);
-
-  const fetchComments = async (eid: string) => {
-    try {
-      const res = await fetch(`/api/events/${eid}/comments`);
-      const data = await res.json();
-      if (data.success) setComments(data.comments);
-    } catch {
-      // server offline — silently ignore
-    }
-  };
-
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) { toast.error('Please sign in to comment'); return; }
-    if (!newComment.trim()) { toast.error('Comment cannot be empty'); return; }
-
-    setIsPostingComment(true);
-    try {
-      const res = await fetch(`/api/events/${eventId}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, userName: user.name, avatarUrl: user.avatarUrl || '', text: newComment.trim() }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setComments((prev) => [data.comment, ...prev]);
-        setNewComment('');
-        toast.success('Comment posted');
-      } else {
-        toast.error(data.message || 'Failed to post comment');
-      }
-    } catch {
-      toast.error('Server offline — cannot post comments right now');
-    } finally {
-      setIsPostingComment(false);
-    }
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    try {
-      const res = await fetch(`/api/events/${eventId}/comments/${commentId}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        setComments((prev) => prev.filter((c) => c.id !== commentId));
-        toast.success('Comment deleted');
-      }
-    } catch {
-      toast.error('Failed to delete comment');
-    }
-  };
+  }, [id, fetchEventById]);
 
   if (!event) {
     return <div className="min-h-screen flex items-center justify-center bg-background">Event not found.</div>;
@@ -101,9 +51,8 @@ export default function EventDetails() {
   const dislikeUserIds = Array.isArray(event.dislikeUserIds) ? event.dislikeUserIds : [];
   const commentCount = typeof event.commentCount === 'number' ? event.commentCount : comments.length;
   const likeCount = typeof event.likeCount === 'number' ? event.likeCount : likeUserIds.length;
-  const dislikeCount =
-    typeof event.dislikeCount === 'number' ? event.dislikeCount : dislikeUserIds.length;
-
+  const dislikeCount = typeof event.dislikeCount === 'number' ? event.dislikeCount : dislikeUserIds.length;
+  const visibleComments = showAllComments ? comments : comments.slice(0, 3);
   const isOrganizer = user?.id === event.organizerId || user?.role === 'admin';
   const hasRsvped = !!user && rsvpUserIds.includes(user.id);
   const currentReaction = user
@@ -113,7 +62,6 @@ export default function EventDetails() {
         ? 'dislike'
         : 'clear'
     : 'clear';
-  const visibleComments = showAllComments ? comments : comments.slice(0, 3);
 
   const handleDelete = async () => {
     try {
@@ -187,7 +135,7 @@ export default function EventDetails() {
             <ArrowLeft className="h-4 w-4" />
             Back to Events
           </Button>
-        </div>
+        </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
@@ -229,9 +177,7 @@ export default function EventDetails() {
                     <div key={item.id} className="rounded-lg border p-4">
                       <div className="flex items-center justify-between gap-4">
                         <p className="font-semibold">{item.userName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(item.createdAt).toLocaleString()}
-                        </p>
+                        <p className="text-sm text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</p>
                       </div>
                       <p className="mt-2">{item.comment}</p>
                     </div>
@@ -252,21 +198,34 @@ export default function EventDetails() {
                 </form>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Comments Section */}
+          <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  Discussion ({comments.length})
-                </CardTitle>
+                <CardTitle>Event Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
-                <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-blue-600" />{format(new Date(event.date), 'EEEE, MMMM d, yyyy')}</div>
-                <div className="flex items-center gap-3"><Clock className="h-4 w-4 text-blue-600" />{event.time}</div>
-                <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-blue-600" />{event.location}</div>
-                <div className="flex items-center gap-3"><Users className="h-4 w-4 text-blue-600" />{event.attendees} / {event.capacity} attending</div>
-                <div className="flex items-center gap-3"><MessageSquare className="h-4 w-4 text-blue-600" />{commentCount} comments</div>
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-4 w-4 text-blue-600" />
+                  {format(new Date(event.date), 'EEEE, MMMM d, yyyy')}
+                </div>
+                <div className="flex items-center gap-3">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                  {event.time}
+                </div>
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-4 w-4 text-blue-600" />
+                  {event.location}
+                </div>
+                <div className="flex items-center gap-3">
+                  <Users className="h-4 w-4 text-blue-600" />
+                  {event.attendees} / {event.capacity} attending
+                </div>
+                <div className="flex items-center gap-3">
+                  <MessageSquare className="h-4 w-4 text-blue-600" />
+                  {commentCount} comments
+                </div>
               </CardContent>
             </Card>
 
@@ -276,11 +235,19 @@ export default function EventDetails() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex gap-3">
-                  <Button variant={currentReaction === 'like' ? 'default' : 'outline'} className="flex-1 gap-2" onClick={() => handleReaction('like')}>
+                  <Button
+                    variant={currentReaction === 'like' ? 'default' : 'outline'}
+                    className="flex-1 gap-2"
+                    onClick={() => handleReaction('like')}
+                  >
                     <ThumbsUp className="h-4 w-4" />
                     {likeCount}
                   </Button>
-                  <Button variant={currentReaction === 'dislike' ? 'default' : 'outline'} className="flex-1 gap-2" onClick={() => handleReaction('dislike')}>
+                  <Button
+                    variant={currentReaction === 'dislike' ? 'default' : 'outline'}
+                    className="flex-1 gap-2"
+                    onClick={() => handleReaction('dislike')}
+                  >
                     <ThumbsDown className="h-4 w-4" />
                     {dislikeCount}
                   </Button>
