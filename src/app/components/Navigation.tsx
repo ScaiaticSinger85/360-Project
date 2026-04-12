@@ -160,22 +160,6 @@ export function Navigation() {
                     <span className="hidden sm:inline">{user.name}</span>
                   </Button>
                 </Link>
-                {user.role === 'admin' && (
-                  <>
-                    <Link to="/admin" className="hidden md:flex">
-                      <Button variant="ghost" className="gap-2">
-                        <Settings className="h-4 w-4" />
-                        <span className="hidden sm:inline">Admin</span>
-                      </Button>
-                    </Link>
-                    <Link to="/admin/users" className="hidden md:flex">
-                      <Button variant="ghost" className="gap-2">
-                        <Users className="h-4 w-4" />
-                        <span className="hidden sm:inline">Users</span>
-                      </Button>
-                    </Link>
-                  </>
-                )}
                 <Button
                   variant="ghost"
                   className="gap-2 text-red-600 hover:text-red-700 hidden md:flex"
