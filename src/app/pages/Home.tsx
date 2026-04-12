@@ -104,14 +104,14 @@ export default function Home() {
           alt="Kelowna"
           className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-blue-900/65" />
+        <div className="absolute inset-0 bg-black/45" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
-            <p className="mb-4 text-blue-200 uppercase tracking-[0.25em] text-sm">Kelowna Community Hub</p>
-            <h1 className="text-5xl font-bold leading-tight mb-6">
+            <p className="mb-4 text-white/80 uppercase tracking-[0.25em] text-sm drop-shadow-md">Kelowna Community Hub</p>
+            <h1 className="text-5xl font-bold leading-tight mb-6 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
               Discover, discuss, and manage local events in one place.
             </h1>
-            <p className="text-lg text-slate-200 mb-8">
+            <p className="text-lg text-white/90 mb-8 drop-shadow-[0_1px_4px_rgba(0,0,0,0.7)]">
               Browse community events, RSVP in real time, comment on posts, and connect with people around Kelowna.
             </p>
             <div className="flex flex-wrap gap-4">
@@ -140,12 +140,20 @@ export default function Home() {
       </section>
 
       {/* Stats */}
-      <section className="py-12 border-b bg-card">
+      <section className="bg-gradient-to-r from-blue-700 to-indigo-800 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-6">
-          <Card className="backdrop-blur-sm bg-white/70 border border-white/40 shadow-md"><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Events</p><p className="text-4xl font-bold">{events.length}</p></CardContent></Card>
-          <Card className="backdrop-blur-sm bg-white/70 border border-white/40 shadow-md"><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Attendees</p><p className="text-4xl font-bold">{events.reduce((sum, e) => sum + e.attendees, 0)}</p></CardContent></Card>
-          <Card className="backdrop-blur-sm bg-white/70 border border-white/40 shadow-md"><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Upcoming</p><p className="text-4xl font-bold">{events.filter((e) => new Date(e.date) >= new Date()).length}</p></CardContent></Card>
-          <Card className="backdrop-blur-sm bg-white/70 border border-white/40 shadow-md"><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Categories</p><p className="text-4xl font-bold">6</p></CardContent></Card>
+          {[
+            { label: 'Total Events', value: events.length, emoji: '🎉' },
+            { label: 'Attendees', value: events.reduce((sum, e) => sum + e.attendees, 0), emoji: '👥' },
+            { label: 'Upcoming', value: events.filter((e) => new Date(e.date) >= new Date()).length, emoji: '📅' },
+            { label: 'Categories', value: 6, emoji: '🗂️' },
+          ].map((stat) => (
+            <div key={stat.label} className="relative rounded-2xl overflow-hidden bg-white/10 backdrop-blur-sm border border-white/20 p-6 text-white text-center shadow-lg">
+              <div className="text-2xl mb-1">{stat.emoji}</div>
+              <p className="text-4xl font-bold">{stat.value}</p>
+              <p className="text-sm text-blue-200 mt-1">{stat.label}</p>
+            </div>
+          ))}
         </div>
       </section>
 
