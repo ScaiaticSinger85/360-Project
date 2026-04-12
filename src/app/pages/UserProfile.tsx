@@ -13,10 +13,10 @@ import { toast } from 'sonner';
 
 export default function UserProfile() {
   const { user, updateProfile, isLoading } = useAuth();
-  const { events, getRSVP } = useData();
+  const { events } = useData();
 
   const eventsCreated = user ? events.filter((e) => e.organizerId === user.id).length : 0;
-  const eventsRsvped = user ? events.filter((e) => getRSVP(e.id, user.id)).length : 0;
+  const eventsRsvped = user ? events.filter((e) => e.rsvpUserIds?.includes(user.id)).length : 0;
 
   const [formData, setFormData] = useState({
     name: '',
