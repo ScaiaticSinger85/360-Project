@@ -68,25 +68,6 @@ export function Navigation() {
               My Comments
             </Button>
           </Link>
-<<<<<<< HEAD
-=======
-          {isAdmin && (
-            <>
-              <Link to="/admin" onClick={closeMobile}>
-                <Button variant={isActive('/admin') ? 'default' : 'ghost'} className="w-full justify-start gap-2">
-                  <Settings className="h-4 w-4" />
-                  Admin DB
-                </Button>
-              </Link>
-              <Link to="/admin/users" onClick={closeMobile}>
-                <Button variant={isActive('/admin/users') ? 'default' : 'ghost'} className="w-full justify-start gap-2">
-                  <Users className="h-4 w-4" />
-                  Users
-                </Button>
-              </Link>
-            </>
-          )}
->>>>>>> 3bd95a97b523e38bb05a68a0345757baaa2b7602
         </>
       )}
     </>
@@ -144,10 +125,6 @@ export function Navigation() {
                       )}
                     </Button>
                   </Link>
-<<<<<<< HEAD
-=======
-
->>>>>>> 3bd95a97b523e38bb05a68a0345757baaa2b7602
                 </>
               )}
             </div>
