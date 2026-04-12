@@ -4,6 +4,7 @@ import { useData } from '../contexts/DataContext';
 import { getCategoryImage } from '../utils/categoryImages';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
+import { Skeleton } from '../components/ui/skeleton';
 import { Calendar, MapPin, Users, Heart } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -46,24 +47,38 @@ export default function MyRSVPs() {
 
   const allEvents = [...upcomingEvents, ...pastEvents];
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600 text-lg">Loading your RSVPs...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-10 bg-gradient-to-r from-rose-500 to-pink-600 rounded-xl text-white">
           <h1 className="text-4xl font-bold mb-2">My RSVPs</h1>
           <p className="text-lg text-rose-100">
-            Events you’ve saved or RSVP’d to
+            Events you've saved or RSVP'd to
           </p>
         </div>
 
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="h-full">
+                <Skeleton className="aspect-video w-full rounded-t-lg rounded-b-none" />
+                <CardContent className="p-6 space-y-3">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <div className="space-y-2 pt-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-28" />
+                  </div>
+                  <Skeleton className="h-9 w-full mt-2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+        <>
         <div className="mb-6">
           <p className="text-gray-600">
             {allEvents.length === 0 ? (
@@ -156,6 +171,8 @@ export default function MyRSVPs() {
               <Button size="lg" className="gap-2">Browse Events</Button>
             </Link>
           </div>
+        )}
+        </>
         )}
       </div>
     </div>

@@ -214,17 +214,18 @@ export function AdminSideCart() {
             <Shield className="h-6 w-6 text-blue-600" />
             <h2 className="font-bold text-lg">Admin Panel</h2>
           </div>
-          {unreadCount > 0 && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={markAllAsRead}>
-                Mark Read
-              </Button>
-              <Button variant="outline" size="sm" onClick={clearAll}>
-                Clear All
-              </Button>
-            </div>
-          )}
         </div>
+
+        {unreadCount > 0 && (
+          <div className="flex gap-2 mb-4">
+            <Button variant="outline" size="sm" onClick={markAllAsRead}>
+              Mark Read
+            </Button>
+            <Button variant="outline" size="sm" onClick={clearAll}>
+              Clear All
+            </Button>
+          </div>
+        )}
 
         {/* Admin Navigation */}
         <div className="space-y-2 mb-6">

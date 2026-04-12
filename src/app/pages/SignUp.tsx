@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Calendar, AlertCircle } from 'lucide-react';
+import { Calendar, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { sanitizeEmail, sanitizePlainText } from '../utils/security';
 
@@ -19,6 +19,8 @@ export default function SignUp() {
   const [avatarPreview, setAvatarPreview] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
 
@@ -62,17 +64,6 @@ export default function SignUp() {
       setError('Passwords do not match');
       return false;
     }
-
-    if (!avatarFile) {
-      setError('Profile image is required');
-      return false;
-    }
-
-    if (avatarFile && !avatarFile.type.startsWith('image/')) {
-      setError('Please upload a valid image file');
-      return false;
-    }
-
     return true;
   };
 
@@ -89,7 +80,7 @@ export default function SignUp() {
       sanitizeEmail(email),
       password,
       confirmPassword,
-      avatarFile
+      avatar ?? undefined
     );
 
     setIsLoading(false);
@@ -122,127 +113,133 @@ export default function SignUp() {
 
       {/* Right side — form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center justify-center gap-2 mb-4 lg:hidden">
-            <Calendar className="h-10 w-10 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">Kelowna Events</span>
-          </Link>
-          <h2 className="text-3xl font-bold text-gray-900">Create your account</h2>
-          <p className="mt-2 text-gray-600">Join the Kelowna community today</p>
-        </div>
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <Link to="/" className="inline-flex items-center justify-center gap-2 mb-4 lg:hidden">
+              <Calendar className="h-10 w-10 text-blue-600" />
+              <span className="text-2xl font-bold text-gray-900">Kelowna Events</span>
+            </Link>
+            <h2 className="text-3xl font-bold text-gray-900">Create your account</h2>
+            <p className="mt-2 text-gray-600">Join the Kelowna community today</p>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign Up</CardTitle>
-            <CardDescription>
-              Create an account to start organizing and attending events
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="John Doe"
-                  value={name}
-                  onChange={(e) => setName(sanitizePlainText(e.target.value))}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(sanitizeEmail(e.target.value))}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="avatar">Profile Image</Label>
-                <Input
-                  id="avatar"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  Required. JPG, PNG, WEBP, or GIF up to 5MB
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="********"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <p className="text-xs text-gray-500">Must be at least 6 characters</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="********"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="avatar">Profile Picture</Label>
-                {avatarPreview && (
-                  <img
-                    src={avatarPreview}
-                    alt="Preview"
-                    className="w-20 h-20 rounded-full object-cover mb-2"
-                  />
+          <Card>
+            <CardHeader>
+              <CardTitle>Sign Up</CardTitle>
+              <CardDescription>
+                Create an account to start organizing and attending events
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
                 )}
-                <Input
-                  id="avatar"
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                  onChange={handleAvatarChange}
-                />
-                <p className="text-xs text-gray-500">Optional. jpg, png, webp, gif — max 5MB</p>
+
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="John Doe"
+                    value={name}
+                    onChange={(e) => setName(sanitizePlainText(e.target.value))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(sanitizeEmail(e.target.value))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500">Must be at least 6 characters</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="avatar">Profile Picture</Label>
+                  {avatarPreview && (
+                    <img
+                      src={avatarPreview}
+                      alt="Preview"
+                      className="w-20 h-20 rounded-full object-cover mb-2"
+                    />
+                  )}
+                  <Input
+                    id="avatar"
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                    onChange={handleAvatarChange}
+                  />
+                  <p className="text-xs text-gray-500">Optional. jpg, png, webp, gif — max 5MB</p>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Creating account...' : 'Create Account'}
+                </Button>
+              </form>
+
+              <div className="mt-6 text-center text-sm">
+                <span className="text-gray-600">Already have an account? </span>
+                <Link to="/sign-in" className="font-semibold text-blue-600 hover:text-blue-500">
+                  Sign in
+                </Link>
               </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Creating account...' : 'Create Account'}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center text-sm">
-              <span className="text-gray-600">Already have an account? </span>
-              <Link to="/sign-in" className="font-semibold text-blue-600 hover:text-blue-500">
-                Sign in
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
