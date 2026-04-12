@@ -1,300 +1,158 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
-import { ArrowLeft, Search, Shield, User as UserIcon, Users } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select';
+import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_BASE = '/api';
-
-interface ManagedUser {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  isDisabled: boolean;
-  createdAt: string;
-}
-
 export default function UserManagement() {
-  const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const { user } = useAuth();
+  const { users, events, updateUserRole, updateUserStatus } = useData();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const enrichedUsers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
 
-  const fetchUsers = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/users`);
-      const data = await res.json();
-      if (data.success) {
-        setUsers(data.users);
-      }
-    } catch {
-      toast.error('Failed to load users');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    return users.filter((entry) => {
+      if (!query) return true;
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    try {
-      const res = await fetch(`${API_BASE}/users/${userId}/role`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
-        toast.success('Role updated');
-      } else {
-        toast.error(data.message || 'Failed to update role');
-      }
-    } catch {
-      toast.error('Failed to update role');
-    }
-  };
+      const ownsMatchingPost = events.some(
+        (event) =>
+          event.organizerId === entry.id &&
+          `${event.title} ${event.description}`.toLowerCase().includes(query)
+      );
 
-  const handleToggleDisable = async (userId: string, currentlyDisabled: boolean) => {
-    try {
-      const res = await fetch(`${API_BASE}/users/${userId}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isDisabled: !currentlyDisabled }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setUsers((prev) =>
-          prev.map((u) => (u.id === userId ? { ...u, isDisabled: !currentlyDisabled } : u))
-        );
-        toast.success(`User ${currentlyDisabled ? 'enabled' : 'disabled'}`);
-      } else {
-        toast.error(data.message || 'Failed to update status');
-      }
-    } catch {
-      toast.error('Failed to update status');
-    }
-  };
+      return (
+        entry.name.toLowerCase().includes(query) ||
+        entry.email.toLowerCase().includes(query) ||
+        ownsMatchingPost
+      );
+    });
+  }, [users, events, searchQuery]);
 
-  if (!currentUser || currentUser.role !== 'admin') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <p className="text-center mb-4">Access denied. Admin only.</p>
-            <Link to="/">
-              <Button className="w-full">Go Home</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  if (!user || user.role !== 'admin') {
+    return <div className="min-h-screen flex items-center justify-center bg-background">Access denied.</div>;
   }
 
-  const filteredUsers = searchQuery.trim()
-    ? users.filter(
-        (u) =>
-          u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          u.role.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : users;
-
-  const getRoleBadgeVariant = (role: string): 'destructive' | 'default' | 'secondary' => {
-    if (role === 'admin') return 'destructive';
-    if (role === 'registered' || role === 'user') return 'default';
-    return 'secondary';
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Banner */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-700 py-10 px-4 sm:px-6 lg:px-8 text-white">
-        <div className="max-w-7xl mx-auto">
-          <Link to="/admin">
-            <Button variant="ghost" className="mb-4 gap-2 text-white hover:text-white hover:bg-white/20 -ml-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
-            </Button>
-          </Link>
-          <div className="flex items-center gap-4">
-            <div className="bg-white/10 rounded-xl p-3">
-              <Users className="h-8 w-8" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">User Management</h1>
-              <p className="text-gray-300 mt-1">Manage accounts, roles, and permissions</p>
-            </div>
+    <div className="min-h-screen bg-background py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold">User Management</h1>
+            <p className="text-muted-foreground mt-2">Search by name, email, or post content and moderate accounts asynchronously.</p>
           </div>
+          <Link to="/admin">
+            <Button variant="outline">Back to Dashboard</Button>
+          </Link>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div className="space-y-6">
         <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="text-xl">All Users</CardTitle>
-                <p className="text-gray-500 text-sm mt-1">{users.length} registered accounts</p>
-              </div>
+          <CardContent className="pt-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-10"
+                placeholder="Search by name, email, or post title/description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search by name, email, or role..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            {isLoading ? (
-              <p className="text-center py-8 text-gray-500">Loading users...</p>
-            ) : filteredUsers.length > 0 ? (
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredUsers.map((user) => (
-                      <TableRow key={user.id} className={user.isDisabled ? 'opacity-50' : ''}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <UserIcon className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <p className="font-semibold">{user.name}</p>
-                              <p className="text-xs text-gray-500">{user.id}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <Badge variant={getRoleBadgeVariant(user.role)}>{user.role}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={user.isDisabled ? 'destructive' : 'secondary'}>
-                            {user.isDisabled ? 'Disabled' : 'Active'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-600">
-                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Select
-                              value={user.role}
-                              onValueChange={(value) => handleRoleChange(user.id, value)}
-                            >
-                              <SelectTrigger className="w-36">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="user">User</SelectItem>
-                                <SelectItem value="registered">Registered</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              size="sm"
-                              variant={user.isDisabled ? 'outline' : 'destructive'}
-                              onClick={() => handleToggleDisable(user.id, user.isDisabled)}
-                              disabled={user.id === currentUser.id}
-                            >
-                              {user.isDisabled ? 'Enable' : 'Disable'}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600">No users found</p>
-              </div>
-            )}
+            <p className="text-sm text-muted-foreground mt-4">Showing {enrichedUsers.length} users</p>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-red-50 border-0">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Admin Users</p>
-                  <p className="text-3xl font-bold">{users.filter((u) => u.role === 'admin').length}</p>
-                </div>
-                <div className="bg-red-600 rounded-xl p-3">
-                  <Shield className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-blue-50 border-0">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Active Users</p>
-                  <p className="text-3xl font-bold">{users.filter((u) => !u.isDisabled).length}</p>
-                </div>
-                <div className="bg-blue-600 rounded-xl p-3">
-                  <UserIcon className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-100 border-0">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Disabled Users</p>
-                  <p className="text-3xl font-bold">{users.filter((u) => u.isDisabled).length}</p>
-                </div>
-                <div className="bg-gray-500 rounded-xl p-3">
-                  <UserIcon className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="space-y-4">
+          {enrichedUsers.length === 0 ? (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">No users matched your admin search.</CardContent></Card>
+          ) : (
+            enrichedUsers.map((entry) => {
+              const userEvents = events.filter((event) => event.organizerId === entry.id);
+
+              return (
+                <Card key={entry.id}>
+                  <CardHeader>
+                    <CardTitle className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                      <span>{entry.name}</span>
+                      <span className="text-sm font-normal text-muted-foreground">{entry.email}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                      <span className="capitalize">Role: {entry.role}</span>
+                      <span>Status: {entry.isActive ? 'Active' : 'Disabled'}</span>
+                      <span>Posts: {userEvents.length}</span>
+                      <span>Comments: {entry.commentCount ?? 0}</span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <select
+                        className="rounded-md border bg-background px-3 py-2"
+                        value={entry.role}
+                        onChange={async (e) => {
+                          try {
+                            await updateUserRole(entry.id, e.target.value);
+                            toast.success('User role updated.');
+                          } catch (error) {
+                            toast.error(error instanceof Error ? error.message : 'Failed to update role.');
+                          }
+                        }}
+                      >
+                        <option value="admin">Admin</option>
+                        <option value="registered">Registered</option>
+                        <option value="unregistered">Unregistered</option>
+                      </select>
+
+                      <Button
+                        variant={entry.isActive ? 'destructive' : 'default'}
+                        onClick={async () => {
+                          try {
+                            await updateUserStatus(entry.id, !entry.isActive);
+                            toast.success(entry.isActive ? 'User disabled.' : 'User enabled.');
+                          } catch (error) {
+                            toast.error(error instanceof Error ? error.message : 'Failed to update user status.');
+                          }
+                        }}
+                      >
+                        {entry.isActive ? 'Disable User' : 'Enable User'}
+                      </Button>
+                    </div>
+
+                    <div className="rounded-lg border p-4">
+                      <p className="font-medium mb-3">Posts created by this user</p>
+                      {userEvents.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No posts created yet.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {userEvents.map((event) => (
+                            <div key={event.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-lg border p-3">
+                              <div>
+                                <p className="font-semibold">{event.title}</p>
+                                <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Link to={`/edit-event/${event.id}`}>
+                                  <Button variant="outline">Edit</Button>
+                                </Link>
+                                <Link to={`/events/${event.id}`}>
+                                  <Button variant="outline">View</Button>
+                                </Link>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
         </div>
       </div>
     </div>

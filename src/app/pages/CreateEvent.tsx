@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useMemo, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/button';
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../components/ui/switch';
 import { ArrowLeft, CalendarPlus, FileText, Calendar, MapPin, Settings2, ImageIcon, Globe, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { sanitizePlainText } from '../utils/security';
 
 const CATEGORIES = [
   'Music',
@@ -40,22 +41,30 @@ export default function CreateEvent() {
   const { createEvent } = useData();
   const navigate = useNavigate();
 
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageError, setImageError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: '',
+    category: CATEGORIES[0],
     date: '',
     time: '',
     location: '',
     address: '',
-    capacity: '',
-    imageUrl: '',
+    capacity: '25',
     isPublic: true,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imageError, setImageError] = useState(false);
+
+  const previewUrl = useMemo(() => {
+    if (imageFile) return URL.createObjectURL(imageFile);
+    if (imageUrl.startsWith('http') && !imageError) return imageUrl;
+    return null;
+  }, [imageFile, imageUrl, imageError]);
 
   if (!user || user.role === 'unregistered') {
     return (
@@ -87,40 +96,20 @@ export default function CreateEvent() {
       newErrors.description = 'Description must be at least 20 characters';
     }
 
-    if (!formData.category) {
-      newErrors.category = 'Category is required';
-    }
+    if (!formData.category) newErrors.category = 'Category is required';
+    if (!formData.date) newErrors.date = 'Date is required';
+    if (!formData.time) newErrors.time = 'Time is required';
+    if (!formData.location.trim()) newErrors.location = 'Location is required';
+    if (!formData.address.trim()) newErrors.address = 'Address is required';
 
-    if (!formData.date) {
-      newErrors.date = 'Date is required';
-    } else {
-      const selectedDate = new Date(formData.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (selectedDate < today) {
-        newErrors.date = 'Event date must be in the future';
-      }
-    }
-
-    if (!formData.time) {
-      newErrors.time = 'Time is required';
-    }
-
-    if (!formData.location.trim()) {
-      newErrors.location = 'Location is required';
-    }
-
-    if (!formData.address.trim()) {
-      newErrors.address = 'Address is required';
-    }
-
-    if (!formData.capacity || parseInt(formData.capacity) <= 0) {
+    const cap = parseInt(formData.capacity);
+    if (!formData.capacity || cap <= 0) {
       newErrors.capacity = 'Capacity must be greater than 0';
-    } else if (parseInt(formData.capacity) > 10000) {
+    } else if (cap > 10000) {
       newErrors.capacity = 'Capacity cannot exceed 10,000';
     }
 
-    if (formData.imageUrl.trim() && !formData.imageUrl.startsWith('http')) {
+    if (imageUrl.trim() && !imageUrl.startsWith('http')) {
       newErrors.imageUrl = 'Please enter a valid URL starting with http';
     }
 
@@ -130,10 +119,7 @@ export default function CreateEvent() {
 
   const handleChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (field === 'imageUrl') setImageError(false);
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: '' }));
-    }
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -148,30 +134,26 @@ export default function CreateEvent() {
 
     try {
       await createEvent({
-        title: formData.title.trim(),
-        description: formData.description.trim(),
+        title: sanitizePlainText(formData.title.trim()),
+        description: sanitizePlainText(formData.description.trim()),
         category: formData.category,
         date: formData.date,
         time: formData.time,
-        location: formData.location.trim(),
-        address: formData.address.trim(),
+        location: sanitizePlainText(formData.location.trim()),
+        address: sanitizePlainText(formData.address.trim()),
         capacity: parseInt(formData.capacity),
-        imageUrl: formData.imageUrl.trim(),
-        organizer: user.name,
-        organizerId: user.id,
+        imageUrl: imageUrl.trim(),
+        imageFile,
         isPublic: formData.isPublic,
       });
 
       toast.success('Event created successfully!');
       navigate('/my-events');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create event';
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : 'Failed to create event');
       setIsSubmitting(false);
     }
   };
-
-  const showImagePreview = formData.imageUrl.startsWith('http') && !imageError;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -207,7 +189,6 @@ export default function CreateEvent() {
                 title="Basic Information"
                 description="Give your event a name, description, and category"
               />
-
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Event Title <span className="text-red-500">*</span></Label>
@@ -266,7 +247,6 @@ export default function CreateEvent() {
                 title="Date & Time"
                 description="When is your event taking place?"
               />
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">Date <span className="text-red-500">*</span></Label>
@@ -279,7 +259,6 @@ export default function CreateEvent() {
                   />
                   {errors.date && <p className="text-sm text-red-600">{errors.date}</p>}
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="time">Time <span className="text-red-500">*</span></Label>
                   <Input
@@ -303,7 +282,6 @@ export default function CreateEvent() {
                 title="Location"
                 description="Where will the event be held?"
               />
-
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="location">Venue Name <span className="text-red-500">*</span></Label>
@@ -316,7 +294,6 @@ export default function CreateEvent() {
                   />
                   {errors.location && <p className="text-sm text-red-600">{errors.location}</p>}
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="address">Street Address <span className="text-red-500">*</span></Label>
                   <Input
@@ -340,16 +317,24 @@ export default function CreateEvent() {
                 title="Event Image"
                 description="Add a cover image to make your event stand out"
               />
-
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="imageUrl">Image URL</Label>
+                  <Label htmlFor="imageFile">Upload Image</Label>
+                  <Input
+                    id="imageFile"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => { setImageFile(e.target.files?.[0] || null); setImageError(false); }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="imageUrl">Or Image URL</Label>
                   <Input
                     id="imageUrl"
                     type="url"
                     placeholder="https://example.com/image.jpg"
-                    value={formData.imageUrl}
-                    onChange={(e) => handleChange('imageUrl', e.target.value)}
+                    value={imageUrl}
+                    onChange={(e) => { setImageUrl(e.target.value); setImageError(false); }}
                     className={errors.imageUrl ? 'border-red-400 focus-visible:ring-red-400' : ''}
                   />
                   {errors.imageUrl && <p className="text-sm text-red-600">{errors.imageUrl}</p>}
@@ -358,11 +343,10 @@ export default function CreateEvent() {
                   </p>
                 </div>
 
-                {/* Live preview */}
-                <div className={`aspect-video rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center bg-gray-50 transition-all ${showImagePreview ? 'border-transparent' : 'border-gray-200'}`}>
-                  {showImagePreview ? (
+                <div className={`aspect-video rounded-xl overflow-hidden border-2 border-dashed flex items-center justify-center bg-gray-50 transition-all ${previewUrl ? 'border-transparent' : 'border-gray-200'}`}>
+                  {previewUrl ? (
                     <img
-                      src={formData.imageUrl}
+                      src={previewUrl}
                       alt="Preview"
                       className="w-full h-full object-cover"
                       onError={() => setImageError(true)}
@@ -386,7 +370,6 @@ export default function CreateEvent() {
                 title="Additional Details"
                 description="Set capacity and visibility for your event"
               />
-
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="capacity">Capacity <span className="text-red-500">*</span></Label>

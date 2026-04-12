@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { getCategoryImage } from '../utils/categoryImages';
 import { Button } from '../components/ui/button';

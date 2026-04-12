@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter } from 'react-router-dom';
 import Root from './pages/Root';
 import Home from './pages/Home';
 import SignIn from './pages/SignIn';
@@ -9,6 +9,8 @@ import CreateEvent from './pages/CreateEvent';
 import EditEvent from './pages/EditEvent';
 import MyEvents from './pages/MyEvents';
 import MyRSVPs from './pages/MyRSVPs';
+import MyComments from './pages/MyComments';
+import AdminComments from './pages/AdminComments';
 import UserProfile from './pages/UserProfile';
 import AdminDashboard from './pages/AdminDashboard';
 import UserManagement from './pages/UserManagement';
@@ -28,6 +30,8 @@ export const router = createBrowserRouter([
       { path: 'edit-event/:id', Component: EditEvent },
       { path: 'my-events', Component: MyEvents },
       { path: 'my-rsvps', Component: MyRSVPs },
+      { path: 'my-comments', Component: MyComments },
+      { path: 'admin/comments', Component: AdminComments },
       { path: 'profile', Component: UserProfile },
       { path: 'admin', Component: AdminDashboard },
       { path: 'admin/users', Component: UserManagement },
