@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Calendar, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { sanitizeEmail, sanitizePlainText } from '../utils/security';
 
 export default function SignUp() {
   const [name, setName] = useState('');
@@ -61,6 +62,17 @@ export default function SignUp() {
       setError('Passwords do not match');
       return false;
     }
+
+    if (!avatarFile) {
+      setError('Profile image is required');
+      return false;
+    }
+
+    if (avatarFile && !avatarFile.type.startsWith('image/')) {
+      setError('Please upload a valid image file');
+      return false;
+    }
+
     return true;
   };
 
@@ -72,7 +84,13 @@ export default function SignUp() {
 
     setIsLoading(true);
 
-    const result = await signup(name, email, password, confirmPassword, avatar ?? undefined);
+    const result = await signup(
+      sanitizePlainText(name),
+      sanitizeEmail(email),
+      password,
+      confirmPassword,
+      avatarFile
+    );
 
     setIsLoading(false);
 
@@ -137,7 +155,7 @@ export default function SignUp() {
                   type="text"
                   placeholder="John Doe"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => setName(sanitizePlainText(e.target.value))}
                   required
                 />
               </div>
@@ -149,9 +167,23 @@ export default function SignUp() {
                   type="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(sanitizeEmail(e.target.value))}
                   required
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="avatar">Profile Image</Label>
+                <Input
+                  id="avatar"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  Required. JPG, PNG, WEBP, or GIF up to 5MB
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -159,7 +191,7 @@ export default function SignUp() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -172,7 +204,7 @@ export default function SignUp() {
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { API_BASE_URL, getAuthHeaders, parseApiResponse } from '../utils/api';
 
 type User = {
   id: string;
@@ -43,11 +44,11 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Set to true when running without the backend server
-const OFFLINE_MODE = false;
-
-const API_BASE_URL = 'http://localhost:4000';
 const CURRENT_USER_KEY = 'currentUser';
+
+function isMongoId(value: string) {
+  return /^[a-f0-9]{24}$/i.test(value);
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -112,9 +113,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: formData,
       });
 
-      const data = await response.json();
+      const data = await parseApiResponse<{ success: boolean; user: User; message?: string }>(response);
 
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         return {
           success: false,
           error: data.message || 'Failed to create account',
@@ -125,10 +126,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(data.user));
 
       return { success: true };
-    } catch {
+    } catch (error) {
       return {
         success: false,
-        error: 'Server error. Please try again.',
+        error: error instanceof Error ? error.message : 'Server error. Please try again.',
       };
     }
   };
@@ -179,9 +180,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const data = await parseApiResponse<{ success: boolean; user: User; message?: string }>(response);
 
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         return {
           success: false,
           error: data.message || 'Failed to sign in',
@@ -192,10 +193,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(data.user));
 
       return { success: true };
-    } catch {
+    } catch (error) {
       return {
         success: false,
-        error: 'Server error. Please try again.',
+        error: error instanceof Error ? error.message : 'Server error. Please try again.',
       };
     }
   };
@@ -219,14 +220,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         formData.append('avatar', data.avatarFile);
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/profile/${user.id}`, {
+      const profilePath = isMongoId(user.id)
+        ? `/api/auth/profile/${user.id}`
+        : `/api/auth/profile-by-email/${encodeURIComponent(user.email)}`;
+
+      const response = await fetch(`${API_BASE_URL}${profilePath}`, {
         method: 'PUT',
+        headers: {
+          ...getAuthHeaders(),
+        },
         body: formData,
       });
 
-      const result = await response.json();
+      const result = await parseApiResponse<{ success: boolean; user: User; message?: string }>(response);
 
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         return {
           success: false,
           error: result.message || 'Failed to update profile',
@@ -237,10 +245,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(result.user));
 
       return { success: true };
-    } catch {
+    } catch (error) {
       return {
         success: false,
-        error: 'Server error. Please try again.',
+        error: error instanceof Error ? error.message : 'Server error. Please try again.',
       };
     }
   };

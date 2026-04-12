@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { getCategoryImage } from '../utils/categoryImages';
 import { Button } from '../components/ui/button';
@@ -21,14 +22,19 @@ type EventType = {
   organizerId: string;
   isPublic: boolean;
   attendees: number;
+  rsvpUserIds: string[];
 };
 
 export default function MyRSVPs() {
-  const { events = [], isLoading, getRSVP } = useData();
+  const { user } = useAuth();
+  const { events = [], isLoading } = useData();
 
   const safeEvents: EventType[] = Array.isArray(events) ? events : [];
 
-  const rsvpEvents = safeEvents.filter((event) => getRSVP(event.id));
+  const rsvpEvents = safeEvents.filter((event) => {
+    const rsvpUserIds = Array.isArray(event.rsvpUserIds) ? event.rsvpUserIds : [];
+    return user ? rsvpUserIds.includes(user.id) : false;
+  });
 
   const upcomingEvents = rsvpEvents
     .filter((event) => new Date(event.date) >= new Date())

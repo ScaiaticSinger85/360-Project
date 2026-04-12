@@ -1,23 +1,25 @@
-import { Outlet } from 'react-router';
+import { Outlet } from 'react-router-dom';
 import { AuthProvider } from '../contexts/AuthContext';
 import { DataProvider } from '../contexts/DataContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
 import { Navigation } from '../components/Navigation';
 import { Footer } from '../components/Footer';
 import { Toaster } from '../components/ui/sonner';
 
 export default function Root() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-          <Navigation />
-          <main className="flex-1">
-            <Outlet />
-          </main>
-          <Footer />
-          <Toaster />
-        </div>
-      </DataProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <DataProvider>
+          <div className="min-h-screen bg-background text-foreground">
+            <Navigation />
+            <main>
+              <Outlet />
+            </main>
+            <Toaster />
+          </div>
+        </DataProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

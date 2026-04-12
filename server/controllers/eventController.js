@@ -1,5 +1,6 @@
 const { ObjectId } = require('mongodb');
 const { getCollections } = require('../config/db');
+const { sanitizeText } = require('../utils/security');
 
 function sanitize(value) {
   return String(value || '').trim().replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -14,6 +15,7 @@ function fileToBase64(file) {
 function imageToDisplayString(image) {
   if (!image) return '';
   if (typeof image === 'string') return image;
+
   if (image.data && image.contentType) {
     let base64String = '';
     if (Buffer.isBuffer(image.data)) {
@@ -23,12 +25,43 @@ function imageToDisplayString(image) {
     } else if (image.data.base64) {
       base64String = image.data.base64;
     }
+
+    if (base64String) {
+      return `data:${image.contentType};base64,${base64String}`;
+    }
     if (base64String) return `data:${image.contentType};base64,${base64String}`;
   }
   return '';
 }
 
-function formatEvent(event) {
+function normalizeComment(comment) {
+  return {
+    id: comment.id || new ObjectId().toString(),
+    userId: comment.userId || '',
+    userName: comment.userName || 'Anonymous',
+    comment: comment.comment || '',
+    createdAt: comment.createdAt || new Date().toISOString(),
+  };
+}
+
+function formatEvent(event, options = {}) {
+  const comments = Array.isArray(options.comments)
+    ? options.comments.map(normalizeComment)
+    : Array.isArray(event.comments)
+      ? event.comments.map(normalizeComment)
+      : [];
+  const likeUserIds = Array.isArray(options.likeUserIds)
+    ? options.likeUserIds
+    : Array.isArray(event.likeUserIds)
+      ? event.likeUserIds
+      : [];
+  const dislikeUserIds = Array.isArray(options.dislikeUserIds)
+    ? options.dislikeUserIds
+    : Array.isArray(event.dislikeUserIds)
+      ? event.dislikeUserIds
+      : [];
+  const rsvpUserIds = Array.isArray(event.rsvpUserIds) ? event.rsvpUserIds : [];
+
   return {
     id: event._id.toString(),
     title: event.title || '',
@@ -38,45 +71,88 @@ function formatEvent(event) {
     time: event.time || '',
     location: event.location || '',
     address: event.address || '',
-    capacity: event.capacity || 0,
+    capacity: Number(event.capacity || 0),
     imageUrl: imageToDisplayString(event.imageUrl),
-    organizer: event.organizer || '',
+    organizer: event.organizer || event.organizerName || '',
+    organizerName: event.organizerName || event.organizer || '',
     organizerId: event.organizerId || '',
-    isPublic: event.isPublic !== undefined ? event.isPublic : true,
-    attendees: event.attendees || 0,
-    rsvpUserIds: event.rsvpUserIds || [],
-    createdAt: event.createdAt || '',
+    isPublic: Boolean(event.isPublic),
+    attendees: Number(event.attendees || rsvpUserIds.length || 0),
+    rsvpUserIds,
+    comments,
+    commentCount: comments.length,
+    likeUserIds,
+    dislikeUserIds,
+    likeCount: likeUserIds.length,
+    dislikeCount: dislikeUserIds.length,
+    createdAt: event.createdAt || new Date().toISOString(),
+    updatedAt: event.updatedAt || event.createdAt || new Date().toISOString(),
   };
 }
 
-async function createEvent(req, res) {
-  try {
-    const { eventsCollection } = getCollections();
-    const data = req.body || {};
+async function hydrateEvent(event) {
+  const { commentsCollection, reactionsCollection } = getCollections();
+  const eventId = event._id.toString();
+  const [comments, reactions] = await Promise.all([
+    commentsCollection.find({ eventId }).sort({ createdAt: 1 }).toArray(),
+    reactionsCollection.find({ eventId }).toArray(),
+  ]);
 
-    const title = sanitize(data.title);
-    const description = sanitize(data.description);
-    const category = sanitize(data.category);
-    const date = sanitize(data.date);
-    const time = sanitize(data.time);
-    const location = sanitize(data.location);
-    const address = sanitize(data.address);
-    const organizer = sanitize(data.organizer);
-    const organizerId = sanitize(data.organizerId);
-    const capacity = parseInt(data.capacity, 10);
-    const isPublic = data.isPublic === 'true' || data.isPublic === true;
+  return formatEvent(event, {
+    comments,
+    likeUserIds: reactions
+      .filter((reaction) => reaction.type === 'like')
+      .map((reaction) => reaction.userId),
+    dislikeUserIds: reactions
+      .filter((reaction) => reaction.type === 'dislike')
+      .map((reaction) => reaction.userId),
+  });
+}
 
-    if (!title || !description || !category || !date || !time || !location || !address || !organizer || !organizerId) {
-      return res.status(400).json({ success: false, message: 'Missing required fields.' });
-    }
+async function hydrateEvents(events) {
+  return Promise.all(events.map((event) => hydrateEvent(event)));
+}
 
-    if (isNaN(capacity) || capacity <= 0) {
-      return res.status(400).json({ success: false, message: 'Capacity must be a positive number.' });
-    }
+function canMutateEvent(user, event) {
+  return user && (user.role === 'admin' || user.id === event.organizerId);
+}
 
-    const imageUrl = req.file ? fileToBase64(req.file) : sanitize(data.imageUrl);
+function parseBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value === 'true';
+  return false;
+}
 
-    const event = {
+function validateEventPayload(data) {
+  const title = sanitizeText(data.title);
+  const description = sanitizeText(data.description);
+  const category = sanitizeText(data.category);
+  const date = sanitizeText(data.date);
+  const time = sanitizeText(data.time);
+  const location = sanitizeText(data.location);
+  const address = sanitizeText(data.address);
+  const capacity = Number.parseInt(String(data.capacity || '0'), 10);
+  const imageUrl = String(data.imageUrl || '').trim();
+  const isPublic = parseBoolean(data.isPublic);
+
+  if (!title || title.length < 5) {
+    return { error: 'Title must be at least 5 characters.' };
+  }
+  if (!description || description.length < 20) {
+    return { error: 'Description must be at least 20 characters.' };
+  }
+  if (!category || !date || !time || !location || !address) {
+    return { error: 'Please fill in all event fields.' };
+  }
+  if (!Number.isFinite(capacity) || capacity <= 0) {
+    return { error: 'Capacity must be greater than 0.' };
+  }
+  if (!imageUrl && !data.imageFile) {
+    return { error: 'Please provide an event image or image URL.' };
+  }
+
+  return {
+    value: {
       title,
       description,
       category,
@@ -86,28 +162,54 @@ async function createEvent(req, res) {
       address,
       capacity,
       imageUrl,
-      organizer,
-      organizerId,
       isPublic,
+    },
+  };
+}
+
+async function createEvent(req, res) {
+  try {
+    const { eventsCollection } = getCollections();
+    const user = req.authUser;
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Please sign in.' });
+    }
+
+    const validation = validateEventPayload({ ...req.body, imageFile: req.file });
+    if (validation.error) {
+      return res.status(400).json({ success: false, message: validation.error });
+    }
+
+    const event = {
+      ...validation.value,
+      imageUrl: req.file ? fileToBase64(req.file) : validation.value.imageUrl,
+      organizer: user.name,
+      organizerName: user.name,
+      organizerId: user.id,
       attendees: 0,
       rsvpUserIds: [],
+      comments: [],
+      likeUserIds: [],
+      dislikeUserIds: [],
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     const result = await eventsCollection.insertOne(event);
-    const saved = await eventsCollection.findOne({ _id: result.insertedId });
+    const savedEvent = await eventsCollection.findOne({ _id: result.insertedId });
 
-    return res.status(201).json({ success: true, message: 'Event created.', event: formatEvent(saved) });
+    return res.status(201).json({ success: true, event: await hydrateEvent(savedEvent) });
   } catch (error) {
     return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
 }
 
-async function getAllEvents(_req, res) {
+async function getAllEvents(req, res) {
   try {
     const { eventsCollection } = getCollections();
-    const events = await eventsCollection.find().sort({ createdAt: -1 }).toArray();
-    return res.status(200).json({ success: true, events: events.map(formatEvent) });
+    const events = await eventsCollection.find({}).sort({ createdAt: -1 }).toArray();
+    return res.status(200).json({ success: true, events: await hydrateEvents(events) });
   } catch (error) {
     return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
@@ -118,7 +220,7 @@ async function getEventsByOrganizerId(req, res) {
     const { eventsCollection } = getCollections();
     const { organizerId } = req.params;
     const events = await eventsCollection.find({ organizerId }).sort({ createdAt: -1 }).toArray();
-    return res.status(200).json({ success: true, events: events.map(formatEvent) });
+    return res.status(200).json({ success: true, events: await hydrateEvents(events) });
   } catch (error) {
     return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
@@ -134,12 +236,11 @@ async function getEventById(req, res) {
     }
 
     const event = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
-
     if (!event) {
       return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
-    return res.status(200).json({ success: true, event: formatEvent(event) });
+    return res.status(200).json({ success: true, event: await hydrateEvent(event) });
   } catch (error) {
     return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
@@ -149,35 +250,42 @@ async function updateEvent(req, res) {
   try {
     const { eventsCollection } = getCollections();
     const { eventId } = req.params;
-    const data = req.body || {};
 
     if (!ObjectId.isValid(eventId)) {
       return res.status(400).json({ success: false, message: 'Invalid event ID.' });
     }
 
-    const existing = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
-    if (!existing) {
+    const existingEvent = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    if (!existingEvent) {
       return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
-    const updateData = {};
+    if (!canMutateEvent(req.authUser, formatEvent(existingEvent))) {
+      return res.status(403).json({ success: false, message: 'Not allowed to edit this event.' });
+    }
 
-    if (data.title !== undefined) updateData.title = sanitize(data.title);
-    if (data.description !== undefined) updateData.description = sanitize(data.description);
-    if (data.category !== undefined) updateData.category = sanitize(data.category);
-    if (data.date !== undefined) updateData.date = sanitize(data.date);
-    if (data.time !== undefined) updateData.time = sanitize(data.time);
-    if (data.location !== undefined) updateData.location = sanitize(data.location);
-    if (data.address !== undefined) updateData.address = sanitize(data.address);
-    if (data.capacity !== undefined) updateData.capacity = parseInt(data.capacity, 10);
-    if (data.isPublic !== undefined) updateData.isPublic = data.isPublic === 'true' || data.isPublic === true;
-    if (req.file) updateData.imageUrl = fileToBase64(req.file);
-    else if (data.imageUrl !== undefined) updateData.imageUrl = sanitize(data.imageUrl);
+    const validation = validateEventPayload({
+      ...req.body,
+      imageFile: req.file,
+      imageUrl: req.body.imageUrl || imageToDisplayString(existingEvent.imageUrl),
+    });
+
+    if (validation.error) {
+      return res.status(400).json({ success: false, message: validation.error });
+    }
+
+    const updateData = {
+      ...validation.value,
+      imageUrl: req.file
+        ? fileToBase64(req.file)
+        : validation.value.imageUrl || imageToDisplayString(existingEvent.imageUrl),
+      updatedAt: new Date().toISOString(),
+    };
 
     await eventsCollection.updateOne({ _id: new ObjectId(eventId) }, { $set: updateData });
-    const updated = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    const updatedEvent = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
 
-    return res.status(200).json({ success: true, message: 'Event updated.', event: formatEvent(updated) });
+    return res.status(200).json({ success: true, event: await hydrateEvent(updatedEvent) });
   } catch (error) {
     return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
@@ -185,20 +293,28 @@ async function updateEvent(req, res) {
 
 async function deleteEvent(req, res) {
   try {
-    const { eventsCollection } = getCollections();
+    const { eventsCollection, commentsCollection, reactionsCollection, usersCollection } = getCollections();
     const { eventId } = req.params;
 
     if (!ObjectId.isValid(eventId)) {
       return res.status(400).json({ success: false, message: 'Invalid event ID.' });
     }
 
-    const result = await eventsCollection.deleteOne({ _id: new ObjectId(eventId) });
-
-    if (result.deletedCount === 0) {
+    const existingEvent = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    if (!existingEvent) {
       return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
-    return res.status(200).json({ success: true, message: 'Event deleted.' });
+    if (!canMutateEvent(req.authUser, formatEvent(existingEvent))) {
+      return res.status(403).json({ success: false, message: 'Not allowed to delete this event.' });
+    }
+
+    await eventsCollection.deleteOne({ _id: new ObjectId(eventId) });
+    await commentsCollection.deleteMany({ eventId });
+    await reactionsCollection.deleteMany({ eventId });
+    await usersCollection.updateMany({}, { $pull: { rsvpEventIds: eventId } });
+
+    return res.status(200).json({ success: true, message: 'Event deleted successfully.' });
   } catch (error) {
     return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
@@ -208,7 +324,11 @@ async function toggleEventRsvp(req, res) {
   try {
     const { eventsCollection, usersCollection } = getCollections();
     const { eventId } = req.params;
-    const { userId } = req.body;
+    const user = req.authUser;
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Please sign in.' });
+    }
 
     if (!ObjectId.isValid(eventId)) {
       return res.status(400).json({ success: false, message: 'Invalid event ID.' });
@@ -219,44 +339,158 @@ async function toggleEventRsvp(req, res) {
       return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
-    const rsvpUserIds = event.rsvpUserIds || [];
-    const alreadyRsvpd = rsvpUserIds.includes(userId);
+    const formattedEvent = formatEvent(event);
+    const hasRsvped = formattedEvent.rsvpUserIds.includes(user.id);
 
-    let updatedRsvpIds;
-    let attendeesDelta;
+    await eventsCollection.updateOne(
+      { _id: new ObjectId(eventId) },
+      hasRsvped
+        ? {
+            $pull: { rsvpUserIds: user.id },
+            $set: {
+              attendees: Math.max(0, formattedEvent.attendees - 1),
+              updatedAt: new Date().toISOString(),
+            },
+          }
+        : {
+            $addToSet: { rsvpUserIds: user.id },
+            $set: {
+              attendees: formattedEvent.attendees + 1,
+              updatedAt: new Date().toISOString(),
+            },
+          }
+    );
 
-    if (alreadyRsvpd) {
-      updatedRsvpIds = rsvpUserIds.filter((id) => id !== userId);
-      attendeesDelta = -1;
-    } else {
-      if (event.attendees >= event.capacity) {
-        return res.status(400).json({ success: false, message: 'Event is full.' });
+    await usersCollection.updateOne(
+      { _id: new ObjectId(user.id) },
+      hasRsvped ? { $pull: { rsvpEventIds: eventId } } : { $addToSet: { rsvpEventIds: eventId } }
+    );
+
+    const updatedEvent = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    return res.status(200).json({
+      success: true,
+      event: await hydrateEvent(updatedEvent),
+      isRsvped: !hasRsvped,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
+  }
+}
+
+async function addEventComment(req, res) {
+  try {
+    const { eventsCollection, commentsCollection } = getCollections();
+    const { eventId } = req.params;
+    const user = req.authUser;
+    const commentText = sanitizeText(req.body.comment);
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Please sign in.' });
+    }
+    if (!ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, message: 'Invalid event ID.' });
+    }
+    if (!commentText || commentText.length < 2) {
+      return res.status(400).json({ success: false, message: 'Comment is too short.' });
+    }
+
+    const event = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found.' });
+    }
+
+    const comment = {
+      id: new ObjectId().toString(),
+      eventId,
+      userId: user.id,
+      userName: user.name,
+      comment: commentText,
+      createdAt: new Date().toISOString(),
+    };
+
+    await eventsCollection.updateOne(
+      { _id: new ObjectId(eventId) },
+      {
+        $push: { comments: comment },
+        $set: { updatedAt: new Date().toISOString() },
       }
-      updatedRsvpIds = [...rsvpUserIds, userId];
-      attendeesDelta = 1;
+    );
+    await commentsCollection.insertOne(comment);
+
+    const updatedEvent = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    return res.status(201).json({
+      success: true,
+      comment,
+      event: await hydrateEvent(updatedEvent),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
+  }
+}
+
+async function setEventReaction(req, res) {
+  try {
+    const { eventsCollection, reactionsCollection } = getCollections();
+    const { eventId } = req.params;
+    const user = req.authUser;
+    const reaction = String(req.body.reaction || '').trim().toLowerCase();
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Please sign in.' });
+    }
+    if (!ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, message: 'Invalid event ID.' });
+    }
+    if (!['like', 'dislike', 'clear'].includes(reaction)) {
+      return res.status(400).json({ success: false, message: 'Invalid reaction.' });
+    }
+
+    const event = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
     await eventsCollection.updateOne(
       { _id: new ObjectId(eventId) },
-      { $set: { rsvpUserIds: updatedRsvpIds, attendees: (event.attendees || 0) + attendeesDelta } }
+      {
+        $pull: { likeUserIds: user.id, dislikeUserIds: user.id },
+        $set: { updatedAt: new Date().toISOString() },
+      }
     );
 
-    if (ObjectId.isValid(userId)) {
-      if (alreadyRsvpd) {
-        await usersCollection.updateOne(
-          { _id: new ObjectId(userId) },
-          { $pull: { rsvpEventIds: eventId } }
-        );
-      } else {
-        await usersCollection.updateOne(
-          { _id: new ObjectId(userId) },
-          { $addToSet: { rsvpEventIds: eventId } }
-        );
-      }
+    if (reaction === 'like') {
+      await eventsCollection.updateOne(
+        { _id: new ObjectId(eventId) },
+        { $addToSet: { likeUserIds: user.id } }
+      );
     }
 
-    const updated = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
-    return res.status(200).json({ success: true, rsvpd: !alreadyRsvpd, event: formatEvent(updated) });
+    if (reaction === 'dislike') {
+      await eventsCollection.updateOne(
+        { _id: new ObjectId(eventId) },
+        { $addToSet: { dislikeUserIds: user.id } }
+      );
+    }
+
+    if (reaction === 'clear') {
+      await reactionsCollection.deleteMany({ eventId, userId: user.id });
+    } else {
+      await reactionsCollection.updateOne(
+        { eventId, userId: user.id },
+        {
+          $set: {
+            eventId,
+            userId: user.id,
+            type: reaction,
+            createdAt: new Date().toISOString(),
+          },
+        },
+        { upsert: true }
+      );
+    }
+
+    const updatedEvent = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    return res.status(200).json({ success: true, event: await hydrateEvent(updatedEvent) });
   } catch (error) {
     return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
@@ -270,4 +504,8 @@ module.exports = {
   updateEvent,
   deleteEvent,
   toggleEventRsvp,
+  addEventComment,
+  setEventReaction,
+  formatEvent,
+  imageToDisplayString,
 };
