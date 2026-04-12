@@ -209,7 +209,7 @@ async function getAllEvents(req, res) {
   try {
     const { eventsCollection } = getCollections();
     const events = await eventsCollection.find({}).sort({ createdAt: -1 }).toArray();
-    return res.status(200).json({ success: true, events: await hydrateEvents(events) });
+    return res.status(200).json({ success: true, events: events.map((event) => formatEvent(event)) });
   } catch (error) {
     return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
@@ -220,7 +220,7 @@ async function getEventsByOrganizerId(req, res) {
     const { eventsCollection } = getCollections();
     const { organizerId } = req.params;
     const events = await eventsCollection.find({ organizerId }).sort({ createdAt: -1 }).toArray();
-    return res.status(200).json({ success: true, events: await hydrateEvents(events) });
+    return res.status(200).json({ success: true, events: events.map((event) => formatEvent(event)) });
   } catch (error) {
     return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }

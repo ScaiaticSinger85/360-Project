@@ -167,7 +167,7 @@ export default function EventBrowse() {
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    fetchEvents();
+    void fetchEvents();
   }, []);
 
   // Reset to page 1 whenever filters change

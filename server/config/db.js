@@ -25,6 +25,16 @@ async function connectToDatabase() {
       await db.createCollection('reactions');
     }
 
+    await Promise.all([
+      db.collection('users').createIndex({ email: 1 }, { unique: true }),
+      db.collection('events').createIndex({ organizerId: 1 }),
+      db.collection('events').createIndex({ createdAt: -1 }),
+      db.collection('comments').createIndex({ eventId: 1, createdAt: 1 }),
+      db.collection('comments').createIndex({ userId: 1, createdAt: -1 }),
+      db.collection('reactions').createIndex({ eventId: 1 }),
+      db.collection('reactions').createIndex({ eventId: 1, userId: 1 }, { unique: true }),
+    ]);
+
     console.log('Connected to MongoDB');
   }
 

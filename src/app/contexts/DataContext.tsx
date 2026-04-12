@@ -420,18 +420,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [user?.id, user?.role]);
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
+
     const interval = window.setInterval(() => {
       void fetchEvents();
 
-      if (user?.role === 'admin') {
+      if (user.role === 'admin') {
         void fetchUsers();
         void fetchAllComments();
-      }
-
-      if (user) {
+      } else {
         void fetchMyCommentHistory();
       }
-    }, 15000);
+    }, 60000);
 
     return () => window.clearInterval(interval);
   }, [user?.id, user?.role]);

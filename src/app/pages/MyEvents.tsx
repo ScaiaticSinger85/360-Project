@@ -30,31 +30,27 @@ type EventType = {
 
 export default function MyEvents() {
   const { user } = useAuth();
-  const { deleteEvent, getEventsByOrganizerId } = useData();
+  const { events, deleteEvent, fetchEvents, isLoading } = useData();
   const [myEvents, setMyEvents] = useState<EventType[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  const loadMyEvents = async () => {
+  useEffect(() => {
     if (!user?.id) {
-      setLoading(false);
+      setMyEvents([]);
       return;
     }
 
-    try {
-      setLoading(true);
-      const userEvents = await getEventsByOrganizerId(user.id);
-      setMyEvents(userEvents);
-    } catch {
-      toast.error('Failed to load your events');
-      setMyEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setMyEvents(events.filter((event) => event.organizerId === user.id));
+  }, [events, user?.id]);
 
   useEffect(() => {
-    loadMyEvents();
-  }, [user]);
+    if (!user?.id || events.length > 0) {
+      return;
+    }
+
+    void fetchEvents().catch(() => {
+      toast.error('Failed to load your events');
+    });
+  }, [user?.id, events.length]);
 
   const handleDelete = async (id: string, title: string) => {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
@@ -83,7 +79,7 @@ export default function MyEvents() {
     );
   }
 
-  if (loading) {
+  if (isLoading && myEvents.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-gray-600 text-lg">Loading your events...</p>
